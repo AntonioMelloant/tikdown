@@ -75,21 +75,37 @@ def download():
  
 @app.route('/api/download-file')
 def download_file():
-    """Redireciona pro arquivo de download direto"""
+    """Faz proxy do arquivo para forçar download direto (sem abrir nova aba)"""
     try:
+        from flask import Response
+        
         file_url = request.args.get('url')
-        file_type = request.args.get('type', 'video')  # 'video' ou 'audio'
-        title = request.args.get('title', 'download')
+        file_type = request.args.get('type', 'video')
+        title = request.args.get('title', 'tiktok_video')
         
         if not file_url:
             return jsonify({'error': 'URL não fornecida'}), 400
         
-        # Validar que a URL é do Tikwm (segurança)
         if 'tikwm.com' not in file_url and 'tiktok' not in file_url:
             return jsonify({'error': 'URL inválida'}), 400
         
-        # Redirecionar direto pro arquivo
-        return redirect(file_url)
+        # Limpar nome do arquivo (remove caracteres especiais)
+        import re
+        clean_title = re.sub(r'[^\w\s-]', '', title).strip()[:50]
+        ext = '.mp3' if file_type == 'audio' else '.mp4'
+        filename = f"{clean_title}{ext}"
+        
+        # Baixar o arquivo do CDN e repassar pro usuário
+        cdn_response = requests.get(file_url, stream=True, timeout=30)
+        cdn_response.raise_for_status()
+        
+        return Response(
+            cdn_response.iter_content(chunk_size=8192),
+            content_type=cdn_response.headers.get('Content-Type', 'video/mp4'),
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
+            }
+        )
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
