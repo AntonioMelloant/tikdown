@@ -18,8 +18,8 @@ def download():
         if not url or not any(x in url for x in ['tiktok.com', 'vm.tiktok', 'vt.tiktok']):
             return jsonify({'error': 'URL inválida'}), 400
         
-        # Chamar API Tikwm
-        api_url = f"https://www.tikwm.com/api/?url={url}"
+        # Chamar API Tikwm (hd=1 para melhor qualidade)
+        api_url = f"https://www.tikwm.com/api/?url={url}&hd=1"
         
         try:
             response = requests.get(api_url, timeout=10)
@@ -46,9 +46,10 @@ def download():
                 'author': video_info.get('author', {}).get('nickname', 'Unknown'),
             }
             
-            # Video link (melhor qualidade)
-            if video_info.get('video'):
-                download_options['video_url'] = video_info.get('video')
+            # Video link (sem marca d'água - tenta HD primeiro)
+            video_link = video_info.get('hdplay') or video_info.get('play')
+            if video_link:
+                download_options['video_url'] = video_link
             
             # Audio (MP3)
             if video_info.get('music'):
