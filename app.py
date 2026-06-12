@@ -1,123 +1,98 @@
-from flask import Flask, render_template, request, jsonify, send_file
-import subprocess
-import os
+from flask import Flask, render_template, request, jsonify, redirect
+import requests
 import json
-from pathlib import Path
-
+ 
 app = Flask(__name__)
-
-# Criar pasta de downloads
-DOWNLOADS_FOLDER = 'downloads'
-os.makedirs(DOWNLOADS_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = DOWNLOADS_FOLDER
-
+ 
 @app.route('/')
 def index():
     return render_template('index.html')
-
+ 
 @app.route('/api/download', methods=['POST'])
 def download():
     try:
         data = request.json
         url = data.get('url', '').strip()
-        quality = data.get('quality', '4K')
         
         # Validar URL
         if not url or not any(x in url for x in ['tiktok.com', 'vm.tiktok', 'vt.tiktok']):
             return jsonify({'error': 'URL inválida'}), 400
         
-        # Limpar pasta (opcional, remove vídeos antigos)
-        clean_downloads()
+        # Chamar API Tikwm
+        api_url = f"https://www.tikwm.com/api/?url={url}"
         
-        # Definir qualidade
-        quality_map = {
-            '4K': 'bestvideo+bestaudio/best',
-            '1080p': 'best[height<=1080]',
-            '720p': 'best[height<=720]',
-            'MP3': 'bestaudio/best'
-        }
+        try:
+            response = requests.get(api_url, timeout=10)
+            response.raise_for_status()
+            video_data = response.json()
+        except requests.exceptions.Timeout:
+            return jsonify({'error': 'Timeout - servidor lento, tente novamente'}), 408
+        except requests.exceptions.RequestException as e:
+            return jsonify({'error': f'Erro ao conectar: {str(e)}'}), 500
         
-        format_choice = quality_map.get(quality, 'best')
+        # Verificar se API retornou sucesso
+        if not video_data.get('code') == 0:
+            return jsonify({'error': 'Vídeo não encontrado ou privado. Tente outro.'}), 400
         
-        # Output
-        output_ext = '.mp3' if quality == 'MP3' else '.mp4'
-        output_path = os.path.join(
-            DOWNLOADS_FOLDER, 
-            '%(title)s' + output_ext
-        )
+        video_info = video_data.get('data', {})
         
-        # Comando yt-dlp
-        cmd = [
-            'yt-dlp',
-            '-f', format_choice,
-            '-o', output_path,
-            '--no-warnings',
-            '-q',
-            url
-        ]
+        # Extrair informações do vídeo
+        try:
+            video_title = video_info.get('title', 'video')[:50]  # Limitar tamanho do título
+            
+            # Preparar opções de download
+            download_options = {
+                'title': video_title,
+                'author': video_info.get('author', {}).get('nickname', 'Unknown'),
+            }
+            
+            # Video link (melhor qualidade)
+            if video_info.get('video'):
+                download_options['video_url'] = video_info.get('video')
+            
+            # Audio (MP3)
+            if video_info.get('music'):
+                download_options['audio_url'] = video_info.get('music')
+            
+            # Verificar se tem pelo menos um arquivo
+            if not download_options.get('video_url') and not download_options.get('audio_url'):
+                return jsonify({'error': 'Não foi possível extrair arquivo do vídeo'}), 400
+            
+            return jsonify({
+                'success': True,
+                'title': video_title,
+                'author': download_options['author'],
+                'video_url': download_options.get('video_url'),
+                'audio_url': download_options.get('audio_url')
+            })
         
-        if quality == 'MP3':
-            cmd.extend(['-x', '--audio-format', 'mp3'])
-        
-        # Executar download
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        
-        if result.returncode != 0:
-            return jsonify({'error': 'Erro ao baixar. Tente outro vídeo.'}), 400
-        
-        # Encontrar arquivo baixado
-        files = os.listdir(DOWNLOADS_FOLDER)
-        if not files:
-            return jsonify({'error': 'Erro ao salvar arquivo'}), 400
-        
-        latest_file = max(
-            [os.path.join(DOWNLOADS_FOLDER, f) for f in files],
-            key=os.path.getctime
-        )
-        
-        filename = os.path.basename(latest_file)
-        file_size = os.path.getsize(latest_file) / (1024 * 1024)  # MB
-        
-        return jsonify({
-            'success': True,
-            'filename': filename,
-            'size': f'{file_size:.1f}MB',
-            'quality': quality
-        })
+        except KeyError as e:
+            return jsonify({'error': f'Erro ao processar vídeo: {str(e)}'}), 400
     
-    except subprocess.TimeoutExpired:
-        return jsonify({'error': 'Timeout - vídeo muito grande'}), 408
     except Exception as e:
         return jsonify({'error': f'Erro: {str(e)}'}), 500
-
-@app.route('/api/get-file/<filename>')
-def get_file(filename):
+ 
+@app.route('/api/download-file')
+def download_file():
+    """Redireciona pro arquivo de download direto"""
     try:
-        filepath = os.path.join(DOWNLOADS_FOLDER, filename)
+        file_url = request.args.get('url')
+        file_type = request.args.get('type', 'video')  # 'video' ou 'audio'
+        title = request.args.get('title', 'download')
         
-        # Segurança: checar se arquivo está na pasta certa
-        if not os.path.abspath(filepath).startswith(os.path.abspath(DOWNLOADS_FOLDER)):
-            return jsonify({'error': 'Acesso negado'}), 403
+        if not file_url:
+            return jsonify({'error': 'URL não fornecida'}), 400
         
-        if not os.path.exists(filepath):
-            return jsonify({'error': 'Arquivo não encontrado'}), 404
+        # Validar que a URL é do Tikwm (segurança)
+        if 'tikwm.com' not in file_url and 'tiktok' not in file_url:
+            return jsonify({'error': 'URL inválida'}), 400
         
-        return send_file(
-            filepath,
-            as_attachment=True,
-            download_name=filename
-        )
+        # Redirecionar direto pro arquivo
+        return redirect(file_url)
+    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-def clean_downloads():
-    """Remove arquivos com mais de 1 hora"""
-    import time
-    now = time.time()
-    for f in os.listdir(DOWNLOADS_FOLDER):
-        path = os.path.join(DOWNLOADS_FOLDER, f)
-        if os.path.isfile(path) and now - os.path.getctime(path) > 3600:
-            try:
-                os.remove(path)
-            except:
-                pass
+ 
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0', port=5000)
+ 
