@@ -95,8 +95,14 @@ def download_file():
         ext = '.mp3' if file_type == 'audio' else '.mp4'
         filename = f"{clean_title}{ext}"
         
+        # Headers necessários (CDN bloqueia requisições sem User-Agent)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.tikwm.com/'
+        }
+        
         # Baixar o arquivo do CDN e repassar pro usuário
-        cdn_response = requests.get(file_url, stream=True, timeout=30)
+        cdn_response = requests.get(file_url, stream=True, timeout=30, headers=headers)
         cdn_response.raise_for_status()
         
         return Response(
