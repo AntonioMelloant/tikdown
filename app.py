@@ -1,13 +1,13 @@
 from flask import Flask, render_template, request, jsonify, redirect
 import requests
 import json
- 
+
 app = Flask(__name__)
- 
+
 @app.route('/')
 def index():
     return render_template('index.html')
- 
+
 @app.route('/api/download', methods=['POST'])
 def download():
     try:
@@ -72,7 +72,7 @@ def download():
     
     except Exception as e:
         return jsonify({'error': f'Erro: {str(e)}'}), 500
- 
+
 @app.route('/api/download-file')
 def download_file():
     """Faz proxy do arquivo para forçar download direto (sem abrir nova aba)"""
@@ -92,6 +92,9 @@ def download_file():
         # Limpar nome do arquivo (remove caracteres especiais)
         import re
         clean_title = re.sub(r'[^\w\s-]', '', title).strip()[:50]
+        clean_title = re.sub(r'\s+', '_', clean_title)  # espaços -> underline
+        if not clean_title:
+            clean_title = 'tiktok_video'
         ext = '.mp3' if file_type == 'audio' else '.mp4'
         filename = f"{clean_title}{ext}"
         
@@ -115,7 +118,6 @@ def download_file():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
- 
+
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
- 
