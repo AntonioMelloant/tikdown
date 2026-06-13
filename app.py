@@ -1,26 +1,20 @@
-from flask import Flask, render_template, request, jsonify, Response
-import requests
-import json
-import re
-import os
- 
 # Configurar Flask para servir arquivos estáticos corretamente
 app = Flask(__name__, static_folder='templates', static_url_path='')
- 
+
 @app.route('/')
 def index():
     return render_template('index.html')
- 
+
 @app.route('/style.css')
 def serve_css():
     with open('templates/style.css', 'r', encoding='utf-8') as f:
         return f.read(), 200, {'Content-Type': 'text/css; charset=utf-8'}
- 
+
 @app.route('/script.js')
 def serve_js():
     with open('templates/script.js', 'r', encoding='utf-8') as f:
         return f.read(), 200, {'Content-Type': 'application/javascript; charset=utf-8'}
- 
+
 @app.route('/api/download', methods=['POST'])
 def download():
     try:
@@ -77,7 +71,7 @@ def download():
     
     except Exception as e:
         return jsonify({'error': f'Erro: {str(e)}'}), 500
- 
+
 def fetch_tiktok(url):
     """Busca vídeo do TikTok via API Tikwm"""
     try:
@@ -100,7 +94,7 @@ def fetch_tiktok(url):
     except Exception as e:
         print(f"Erro ao buscar TikTok: {e}")
         return None
- 
+
 def fetch_instagram(url):
     """Busca vídeo/foto do Instagram com múltiplas estratégias"""
     try:
@@ -169,7 +163,7 @@ def fetch_instagram(url):
     except Exception as e:
         print(f"Erro ao buscar Instagram: {e}")
         return None
- 
+
 @app.route('/api/download-file')
 def download_file():
     """Faz proxy do arquivo para forçar download direto"""
@@ -212,7 +206,89 @@ def download_file():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
- 
+
+@app.route('/api/clean-metadata', methods=['POST'])
+def clean_metadata():
+    """Remove metadados de vídeo/imagem usando FFmpeg"""
+    try:
+        import subprocess
+        import tempfile
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo fornecido'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'Arquivo inválido'}), 400
+        
+        # Verificar se FFmpeg está disponível
+        try:
+            subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True, timeout=5)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return jsonify({'error': 'FFmpeg não disponível no servidor'}), 500
+        
+        # Criar arquivo temporário
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_input:
+            file.save(tmp_input.name)
+            input_path = tmp_input.name
+        
+        # Arquivo de saída
+        output_path = tempfile.mktemp(suffix=os.path.splitext(file.filename)[1])
+        
+        try:
+            # Usar FFmpeg para remover metadados
+            cmd = [
+                'ffmpeg',
+                '-i', input_path,
+                '-map_metadata', '-1',
+                '-map_metadata:s', '-1',
+                '-c:v', 'copy',
+                '-c:a', 'copy',
+                '-y',
+                output_path
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, timeout=300, text=True)
+            
+            if result.returncode != 0:
+                error_msg = result.stderr[:200] if result.stderr else 'Erro desconhecido'
+                return jsonify({'error': f'Erro ao processar: {error_msg}'}), 500
+            
+            # Ler arquivo processado
+            with open(output_path, 'rb') as f:
+                file_data = f.read()
+            
+            # Limpar arquivos temporários
+            try:
+                os.unlink(input_path)
+                os.unlink(output_path)
+            except:
+                pass
+            
+            # Retornar arquivo limpo
+            return Response(
+                file_data,
+                mimetype=file.content_type,
+                headers={'Content-Disposition': f'attachment; filename=cleaned_{file.filename}'}
+            )
+            
+        except subprocess.TimeoutExpired:
+            try:
+                os.unlink(input_path)
+                os.unlink(output_path)
+            except:
+                pass
+            return jsonify({'error': 'Processamento demorou muito'}), 500
+        except Exception as e:
+            try:
+                os.unlink(input_path)
+                os.unlink(output_path)
+            except:
+                pass
+            return jsonify({'error': f'Erro: {str(e)[:200]}'}), 500
+    
+    except Exception as e:
+        return jsonify({'error': f'Erro no servidor: {str(e)[:200]}'}), 500
+
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
- 
