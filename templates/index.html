@@ -3,29 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VidDrop — Baixar vídeos TikTok e Instagram</title>
-  <meta name="description" content="Baixe vídeos do TikTok sem marca d'água e fotos/vídeos do Instagram em alta qualidade. Rápido, gratuito e sem complicação." />
+  <title>VidDrop — Baixar vídeos TikTok</title>
+  <meta name="description" content="Baixe vídeos do TikTok sem marca d'água e em alta qualidade. Rápido, gratuito e sem complicação." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-
+<body class="tiktok-mode">
+ 
   <!-- Particle canvas -->
   <canvas id="particles-canvas"></canvas>
-
+ 
   <!-- Animated dot grid -->
   <div class="grid-overlay" id="grid-overlay"></div>
-
+ 
   <!-- Ambient background orbs -->
   <div class="bg-orb orb-1" id="orb1"></div>
   <div class="bg-orb orb-2" id="orb2"></div>
   <div class="bg-orb orb-3" id="orb3"></div>
   <div class="bg-orb orb-4" id="orb4"></div>
-
+ 
   <div class="container">
-
+ 
     <!-- Logo -->
     <header class="header">
       <div class="logo">
@@ -33,67 +33,20 @@
         <span class="logo-text">VidDrop</span>
       </div>
     </header>
-
+ 
     <!-- Main content -->
     <main class="main">
-
-      <!-- Tab buttons -->
-      <div class="tabs" role="tablist" aria-label="Selecione a plataforma">
-        <button
-          class="tab-btn active"
-          id="tab-tiktok"
-          role="tab"
-          aria-selected="true"
-          aria-controls="panel-tiktok"
-          onclick="switchTab('tiktok')"
-        >
-          <span class="tab-icon">
-            <!-- TikTok Logo SVG -->
-            <svg class="platform-logo tiktok-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.2 8.2 0 004.79 1.52V6.82a4.85 4.85 0 01-1.02-.13z" fill="currentColor"/>
-            </svg>
-          </span>
-          <span class="tab-label">TikTok</span>
-          <span class="tab-glow"></span>
-        </button>
-        <button
-          class="tab-btn"
-          id="tab-instagram"
-          role="tab"
-          aria-selected="false"
-          aria-controls="panel-instagram"
-          onclick="switchTab('instagram')"
-        >
-          <span class="tab-icon">
-            <!-- Instagram Logo SVG -->
-            <svg class="platform-logo instagram-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="ig-grad-tab" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#fcb045"/>
-                  <stop offset="40%" stop-color="#fd1d1d"/>
-                  <stop offset="100%" stop-color="#833ab4"/>
-                </linearGradient>
-              </defs>
-              <rect x="2" y="2" width="20" height="20" rx="6" ry="6" stroke="currentColor" stroke-width="2" fill="none"/>
-              <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/>
-              <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
-            </svg>
-          </span>
-          <span class="tab-label">Instagram</span>
-          <span class="tab-glow"></span>
-        </button>
-      </div>
-
+ 
       <!-- Hero text -->
       <div class="hero">
-        <h1 class="hero-title" id="hero-title">Baixar do TikTok</h1>
-        <p class="hero-subtitle" id="hero-subtitle">Cole o link e baixe em alta qualidade, sem marca d'água</p>
+        <h1 class="hero-title">Baixar do TikTok</h1>
+        <p class="hero-subtitle">Cole o link e baixe em alta qualidade, sem marca d'água</p>
       </div>
-
+ 
       <!-- Input card -->
       <div class="input-card" id="input-card">
         <div class="input-wrapper">
-          <span class="input-icon" id="input-icon">🔗</span>
+          <span class="input-icon" id="input-icon">🎵</span>
           <input
             type="url"
             id="video-url"
@@ -111,7 +64,7 @@
           <span class="btn-shimmer"></span>
         </button>
       </div>
-
+ 
       <!-- Loading state -->
       <div class="loading-state" id="loading-state" style="display:none">
         <div class="spinner-ring" id="spinner-ring">
@@ -119,7 +72,7 @@
         </div>
         <p class="loading-text">Buscando o vídeo...</p>
       </div>
-
+ 
       <!-- Result panel -->
       <div class="result-panel" id="result-panel" style="display:none">
         <div class="result-header">
@@ -140,14 +93,14 @@
         </div>
         <button class="try-another-btn" onclick="resetState()">⟵ Tentar outro link</button>
       </div>
-
+ 
       <!-- Error state -->
       <div class="error-state" id="error-state" style="display:none">
         <span class="error-icon">⚠</span>
         <p class="error-msg" id="error-msg">Link inválido. Verifique a URL e tente novamente.</p>
         <button class="try-another-btn" onclick="resetState()">Tentar novamente</button>
       </div>
-
+ 
       <!-- Features strip -->
       <div class="features" id="features-strip">
         <div class="feature-item">
@@ -157,23 +110,24 @@
         <div class="feature-divider"></div>
         <div class="feature-item">
           <span class="feature-icon" id="feat-icon-2">✦</span>
-          <span>Péssima qualidade</span>
+          <span>Alta qualidade</span>
         </div>
         <div class="feature-divider"></div>
         <div class="feature-item">
           <span class="feature-icon" id="feat-icon-3">✦</span>
-          <span>100% grátis, menos pro Pedro</span>
+          <span>100% grátis</span>
         </div>
       </div>
-
+ 
     </main>
-
+ 
     <footer class="footer">
       <p>VidDrop &copy; 2026 — Apenas para uso pessoal</p>
     </footer>
-
+ 
   </div>
-
+ 
   <script src="script.js"></script>
 </body>
 </html>
+ 
