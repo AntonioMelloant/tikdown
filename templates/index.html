@@ -37,85 +37,162 @@
     <!-- Main content -->
     <main class="main">
  
-      <!-- Hero text -->
-      <div class="hero">
-        <h1 class="hero-title">Baixar do TikTok</h1>
-        <p class="hero-subtitle">Cole o link e baixe em alta qualidade, sem marca d'água</p>
-      </div>
- 
-      <!-- Input card -->
-      <div class="input-card" id="input-card">
-        <div class="input-wrapper">
-          <span class="input-icon" id="input-icon">🎵</span>
-          <input
-            type="url"
-            id="video-url"
-            class="url-input"
-            placeholder="https://www.tiktok.com/@user/video/..."
-            autocomplete="off"
-            spellcheck="false"
-            aria-label="URL do vídeo"
-          />
-          <button class="clear-btn" id="clear-btn" onclick="clearInput()" aria-label="Limpar input" style="display:none">✕</button>
-        </div>
-        <button class="download-btn" id="download-btn" onclick="handleDownload()">
-          <span class="btn-icon">⬇</span>
-          <span class="btn-text">Baixar</span>
-          <span class="btn-shimmer"></span>
+      <!-- Mode selector -->
+      <div class="mode-selector">
+        <button class="mode-btn active" onclick="switchMode('download')" id="mode-download">
+          <span class="mode-icon">⬇</span>
+          <span>Baixar Vídeo</span>
+        </button>
+        <button class="mode-btn" onclick="switchMode('clean')" id="mode-clean">
+          <span class="mode-icon">🧹</span>
+          <span>Limpar Metadados</span>
         </button>
       </div>
  
-      <!-- Loading state -->
-      <div class="loading-state" id="loading-state" style="display:none">
-        <div class="spinner-ring" id="spinner-ring">
-          <div></div><div></div><div></div><div></div>
+      <!-- Download Mode -->
+      <div class="mode-content" id="download-mode">
+        <!-- Hero text -->
+        <div class="hero">
+          <h1 class="hero-title">Baixar do TikTok</h1>
+          <p class="hero-subtitle">Cole o link e baixe em alta qualidade, sem marca d'água</p>
         </div>
-        <p class="loading-text">Buscando o vídeo...</p>
-      </div>
  
-      <!-- Result panel -->
-      <div class="result-panel" id="result-panel" style="display:none">
-        <div class="result-header">
-          <div class="result-thumb-wrap">
-            <div class="result-thumb" id="result-thumb">
-              <span class="thumb-placeholder" id="thumb-placeholder">🎬</span>
+        <!-- Input card -->
+        <div class="input-card" id="input-card">
+          <div class="input-wrapper">
+            <span class="input-icon">🎵</span>
+            <input
+              type="url"
+              id="video-url"
+              class="url-input"
+              placeholder="https://www.tiktok.com/@user/video/..."
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="URL do vídeo"
+            />
+            <button class="clear-btn" id="clear-btn" onclick="clearInput()" aria-label="Limpar input" style="display:none">✕</button>
+          </div>
+          <button class="download-btn" id="download-btn" onclick="handleDownload()">
+            <span class="btn-icon">⬇</span>
+            <span class="btn-text">Baixar</span>
+            <span class="btn-shimmer"></span>
+          </button>
+        </div>
+ 
+        <!-- Loading state -->
+        <div class="loading-state" id="loading-state" style="display:none">
+          <div class="spinner-ring" id="spinner-ring">
+            <div></div><div></div><div></div><div></div>
+          </div>
+          <p class="loading-text">Buscando o vídeo...</p>
+        </div>
+ 
+        <!-- Result panel -->
+        <div class="result-panel" id="result-panel" style="display:none">
+          <div class="result-header">
+            <div class="result-thumb-wrap">
+              <div class="result-thumb" id="result-thumb">
+                <span class="thumb-placeholder">🎬</span>
+              </div>
+              <div class="play-badge">▶</div>
             </div>
-            <div class="play-badge" id="play-badge">▶</div>
+            <div class="result-meta">
+              <p class="result-platform">TikTok</p>
+              <p class="result-title" id="result-title">Vídeo encontrado</p>
+              <p class="result-author" id="result-author">@username</p>
+            </div>
           </div>
-          <div class="result-meta">
-            <p class="result-platform" id="result-platform">TikTok</p>
-            <p class="result-title" id="result-title">Vídeo encontrado</p>
-            <p class="result-author" id="result-author">@username</p>
+          <div class="result-options" id="result-options">
+            <!-- dynamically filled -->
+          </div>
+          <button class="try-another-btn" onclick="resetState()">⟵ Tentar outro link</button>
+        </div>
+ 
+        <!-- Error state -->
+        <div class="error-state" id="error-state" style="display:none">
+          <span class="error-icon">⚠</span>
+          <p class="error-msg" id="error-msg">Link inválido. Verifique a URL e tente novamente.</p>
+          <button class="try-another-btn" onclick="resetState()">Tentar novamente</button>
+        </div>
+ 
+        <!-- Features strip -->
+        <div class="features" id="features-strip">
+          <div class="feature-item">
+            <span class="feature-icon">✦</span>
+            <span>Sem marca de água</span>
+          </div>
+          <div class="feature-divider"></div>
+          <div class="feature-item">
+            <span class="feature-icon">✦</span>
+            <span>Alta qualidade</span>
+          </div>
+          <div class="feature-divider"></div>
+          <div class="feature-item">
+            <span class="feature-icon">✦</span>
+            <span>100% grátis</span>
           </div>
         </div>
-        <div class="result-options" id="result-options">
-          <!-- dynamically filled -->
-        </div>
-        <button class="try-another-btn" onclick="resetState()">⟵ Tentar outro link</button>
       </div>
  
-      <!-- Error state -->
-      <div class="error-state" id="error-state" style="display:none">
-        <span class="error-icon">⚠</span>
-        <p class="error-msg" id="error-msg">Link inválido. Verifique a URL e tente novamente.</p>
-        <button class="try-another-btn" onclick="resetState()">Tentar novamente</button>
-      </div>
+      <!-- Clean Metadata Mode -->
+      <div class="mode-content" id="clean-mode" style="display:none">
+        <!-- Hero text -->
+        <div class="hero">
+          <h1 class="hero-title">Limpar Metadados</h1>
+          <p class="hero-subtitle">Remove todas as informações do arquivo (EXIF, timestamps, autor)</p>
+        </div>
  
-      <!-- Features strip -->
-      <div class="features" id="features-strip">
-        <div class="feature-item">
-          <span class="feature-icon" id="feat-icon-1">✦</span>
-          <span>Sem marca de água</span>
+        <!-- Upload card -->
+        <div class="upload-card" id="upload-card">
+          <div class="upload-area" id="upload-area" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+            <span class="upload-icon">📁</span>
+            <p class="upload-text">Arraste o vídeo aqui ou <span class="upload-link">clique para selecionar</span></p>
+            <input type="file" id="file-input" accept="video/*,image/*" style="display:none" onchange="handleFileSelect(event)" />
+          </div>
+          <button class="download-btn" id="clean-btn" onclick="handleClean()" style="display:none">
+            <span class="btn-icon">🧹</span>
+            <span class="btn-text">Limpar Metadados</span>
+            <span class="btn-shimmer"></span>
+          </button>
+          <p class="file-info" id="file-info"></p>
         </div>
-        <div class="feature-divider"></div>
-        <div class="feature-item">
-          <span class="feature-icon" id="feat-icon-2">✦</span>
-          <span>Alta qualidade</span>
+ 
+        <!-- Loading state for cleaning -->
+        <div class="loading-state" id="clean-loading" style="display:none">
+          <div class="spinner-ring">
+            <div></div><div></div><div></div><div></div>
+          </div>
+          <p class="loading-text">Limpando metadados...</p>
         </div>
-        <div class="feature-divider"></div>
-        <div class="feature-item">
-          <span class="feature-icon" id="feat-icon-3">✦</span>
-          <span>100% grátis</span>
+ 
+        <!-- Clean result -->
+        <div class="result-panel" id="clean-result" style="display:none">
+          <div class="result-header" style="text-align:center">
+            <span class="result-icon" style="font-size:32px">✅</span>
+            <p style="color: #10b981; margin-top: 10px;">Arquivo limpo com sucesso!</p>
+          </div>
+          <div style="padding: 20px;">
+            <p style="margin-bottom: 15px; color: #888;">Metadados removidos:</p>
+            <ul style="color: #ddd; padding-left: 20px;">
+              <li>EXIF Data</li>
+              <li>Timestamps</li>
+              <li>Autor/Copyright</li>
+              <li>GPS Location</li>
+              <li>Todas as tags</li>
+            </ul>
+          </div>
+          <button class="download-btn" id="download-clean-btn" onclick="downloadCleanedFile()" style="margin-top: 15px;">
+            <span class="btn-icon">⬇</span>
+            <span>Baixar Arquivo Limpo</span>
+          </button>
+          <button class="try-another-btn" onclick="resetCleanMode()">🧹 Limpar outro arquivo</button>
+        </div>
+ 
+        <!-- Clean error -->
+        <div class="error-state" id="clean-error" style="display:none">
+          <span class="error-icon">⚠</span>
+          <p class="error-msg" id="clean-error-msg">Erro ao limpar metadados.</p>
+          <button class="try-another-btn" onclick="resetCleanMode()">Tentar novamente</button>
         </div>
       </div>
  
