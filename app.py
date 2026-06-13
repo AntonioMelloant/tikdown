@@ -1,63 +1,68 @@
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, Response
 import requests
 import json
-
-app = Flask(__name__)
-
+import re
+import os
+ 
+# Configurar Flask para servir arquivos estáticos corretamente
+app = Flask(__name__, static_folder='templates', static_url_path='')
+ 
 @app.route('/')
 def index():
     return render_template('index.html')
-
+ 
+@app.route('/style.css')
+def serve_css():
+    with open('templates/style.css', 'r', encoding='utf-8') as f:
+        return f.read(), 200, {'Content-Type': 'text/css; charset=utf-8'}
+ 
+@app.route('/script.js')
+def serve_js():
+    with open('templates/script.js', 'r', encoding='utf-8') as f:
+        return f.read(), 200, {'Content-Type': 'application/javascript; charset=utf-8'}
+ 
 @app.route('/api/download', methods=['POST'])
 def download():
     try:
         data = request.json
         url = data.get('url', '').strip()
         
-        # Validar URL
-        if not url or not any(x in url for x in ['tiktok.com', 'vm.tiktok', 'vt.tiktok']):
-            return jsonify({'error': 'URL inválida'}), 400
+        # Validar URL (TikTok ou Instagram)
+        is_tiktok = any(x in url for x in ['tiktok.com', 'vm.tiktok', 'vt.tiktok'])
+        is_instagram = any(x in url for x in ['instagram.com', 'instagr.am', 'ig.me'])
         
-        # Chamar API Tikwm (hd=1 para melhor qualidade)
-        api_url = f"https://www.tikwm.com/api/?url={url}&hd=1"
+        if not url or (not is_tiktok and not is_instagram):
+            return jsonify({'error': 'URL inválida. Cole um link do TikTok ou Instagram.'}), 400
         
-        try:
-            response = requests.get(api_url, timeout=10)
-            response.raise_for_status()
-            video_data = response.json()
-        except requests.exceptions.Timeout:
-            return jsonify({'error': 'Timeout - servidor lento, tente novamente'}), 408
-        except requests.exceptions.RequestException as e:
-            return jsonify({'error': f'Erro ao conectar: {str(e)}'}), 500
+        # Chamar a API apropriada
+        if is_tiktok:
+            video_data = fetch_tiktok(url)
+        else:  # Instagram
+            video_data = fetch_instagram(url)
         
         # Verificar se API retornou sucesso
-        if not video_data.get('code') == 0:
-            return jsonify({'error': 'Vídeo não encontrado ou privado. Tente outro.'}), 400
+        if not video_data:
+            return jsonify({'error': 'Conteúdo não encontrado ou privado. Tente outro.'}), 400
         
-        video_info = video_data.get('data', {})
+        video_info = video_data
         
-        # Extrair informações do vídeo
+        # Extrair informações
         try:
-            video_title = video_info.get('title', 'video')[:50]  # Limitar tamanho do título
+            video_title = video_info.get('title', 'video')[:50]
             
-            # Preparar opções de download
             download_options = {
                 'title': video_title,
-                'author': video_info.get('author', {}).get('nickname', 'Unknown'),
+                'author': video_info.get('author', 'Unknown'),
             }
             
-            # Video link (sem marca d'água - tenta HD primeiro)
-            video_link = video_info.get('hdplay') or video_info.get('play')
-            if video_link:
-                download_options['video_url'] = video_link
+            if video_info.get('video_url'):
+                download_options['video_url'] = video_info.get('video_url')
             
-            # Audio (MP3)
-            if video_info.get('music'):
-                download_options['audio_url'] = video_info.get('music')
+            if video_info.get('audio_url'):
+                download_options['audio_url'] = video_info.get('audio_url')
             
-            # Verificar se tem pelo menos um arquivo
             if not download_options.get('video_url') and not download_options.get('audio_url'):
-                return jsonify({'error': 'Não foi possível extrair arquivo do vídeo'}), 400
+                return jsonify({'error': 'Não foi possível extrair arquivo'}), 400
             
             return jsonify({
                 'success': True,
@@ -68,17 +73,97 @@ def download():
             })
         
         except KeyError as e:
-            return jsonify({'error': f'Erro ao processar vídeo: {str(e)}'}), 400
+            return jsonify({'error': f'Erro ao processar: {str(e)}'}), 400
     
     except Exception as e:
         return jsonify({'error': f'Erro: {str(e)}'}), 500
-
+ 
+def fetch_tiktok(url):
+    """Busca vídeo do TikTok via API Tikwm"""
+    try:
+        api_url = f"https://www.tikwm.com/api/?url={url}&hd=1"
+        response = requests.get(api_url, timeout=10)
+        response.raise_for_status()
+        video_data = response.json()
+        
+        if not video_data.get('code') == 0:
+            return None
+        
+        video_info = video_data.get('data', {})
+        
+        return {
+            'title': video_info.get('title', 'TikTok Video')[:50],
+            'author': video_info.get('author', {}).get('nickname', 'Unknown'),
+            'video_url': video_info.get('hdplay') or video_info.get('play'),
+            'audio_url': video_info.get('music')
+        }
+    except Exception as e:
+        print(f"Erro ao buscar TikTok: {e}")
+        return None
+ 
+def fetch_instagram(url):
+    """Busca vídeo/foto do Instagram"""
+    try:
+        # Usar API instadownloader.io (gratuita)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        api_url = f"https://www.instagram.com/api/v1/ig_user/profile/?url={url}"
+        
+        # Tentar endpoint alternativo - rapidapi instagram downloader
+        api_urls = [
+            f"https://instagram-downloader-download-videos.p.rapidapi.com/index?url={url}",
+            f"https://instacdn.com/api/instagram/?url={url}"
+        ]
+        
+        # Tentar com um endpoint mais simples
+        # Vamos usar um serviço que funciona bem
+        api_url = "https://www.instagram.com/oembed/?url=" + url
+        response = requests.get(api_url, timeout=10, headers=headers)
+        
+        if response.status_code != 200:
+            return None
+        
+        oembed_data = response.json()
+        
+        # Extrair informações do HTML embed
+        html = oembed_data.get('html', '')
+        
+        # Parse simples do HTML para extrair URL da mídia
+        if 'video' in html.lower():
+            media_type = 'video'
+        else:
+            media_type = 'image'
+        
+        # Tentar uma abordagem diferente - fazer requisição direta
+        # Instagram bloqueia muitas requisições, então vamos usar um serviço de proxy
+        
+        # Usar saveig.app API
+        save_ig_url = f"https://saveig.app/api/instagram/?url={url}"
+        resp = requests.get(save_ig_url, timeout=10, headers=headers)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('media'):
+                media = data['media'][0] if isinstance(data['media'], list) else data['media']
+                return {
+                    'title': data.get('caption', 'Instagram Post')[:50] or 'Instagram Post',
+                    'author': data.get('author', 'Unknown'),
+                    'video_url': media.get('url'),
+                    'audio_url': None
+                }
+        
+        return None
+        
+    except Exception as e:
+        print(f"Erro ao buscar Instagram: {e}")
+        return None
+ 
 @app.route('/api/download-file')
 def download_file():
-    """Faz proxy do arquivo para forçar download direto (sem abrir nova aba)"""
+    """Faz proxy do arquivo para forçar download direto"""
     try:
-        from flask import Response
-        
         file_url = request.args.get('url')
         file_type = request.args.get('type', 'video')
         title = request.args.get('title', 'tiktok_video')
@@ -86,25 +171,24 @@ def download_file():
         if not file_url:
             return jsonify({'error': 'URL não fornecida'}), 400
         
-        if 'tikwm.com' not in file_url and 'tiktok' not in file_url:
+        if 'tikwm.com' not in file_url and 'tiktok' not in file_url and 'instagram' not in file_url and 'cdninstagram' not in file_url:
             return jsonify({'error': 'URL inválida'}), 400
         
-        # Limpar nome do arquivo (remove caracteres especiais)
-        import re
+        # Limpar nome do arquivo
         clean_title = re.sub(r'[^\w\s-]', '', title).strip()[:50]
-        clean_title = re.sub(r'\s+', '_', clean_title)  # espaços -> underline
+        clean_title = re.sub(r'\s+', '_', clean_title)
         if not clean_title:
-            clean_title = 'tiktok_video'
+            clean_title = 'media_download'
         ext = '.mp3' if file_type == 'audio' else '.mp4'
         filename = f"{clean_title}{ext}"
         
-        # Headers necessários (CDN bloqueia requisições sem User-Agent)
+        # Headers necessários
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': 'https://www.tikwm.com/'
         }
         
-        # Baixar o arquivo do CDN e repassar pro usuário
+        # Baixar o arquivo
         cdn_response = requests.get(file_url, stream=True, timeout=30, headers=headers)
         cdn_response.raise_for_status()
         
@@ -118,6 +202,6 @@ def download_file():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+ 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
