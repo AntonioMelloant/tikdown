@@ -169,9 +169,9 @@ async function handleDownload() {
     return;
   }
   
-  // Se for Instagram, redireciona pro saveig.app
+  // Se for Instagram, redireciona pro snapinsta.com
   if (currentMode === 'instagram') {
-    window.open(`https://saveig.app/instagram?url=${encodeURIComponent(url)}`, '_blank');
+    window.open(`https://snapinsta.com/?url=${encodeURIComponent(url)}`, '_blank');
     return;
   }
   
