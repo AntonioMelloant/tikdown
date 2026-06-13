@@ -102,58 +102,68 @@ def fetch_tiktok(url):
         return None
  
 def fetch_instagram(url):
-    """Busca vídeo/foto do Instagram"""
+    """Busca vídeo/foto do Instagram com múltiplas estratégias"""
     try:
-        # Usar API instadownloader.io (gratuita)
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         
-        api_url = f"https://www.instagram.com/api/v1/ig_user/profile/?url={url}"
+        # Estratégia 1: Tentar com instacdn.com
+        try:
+            api_url = f"https://instacdn.com/api/instagram/?url={url}"
+            response = requests.get(api_url, timeout=10, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success') and data.get('media'):
+                    media = data['media'][0] if isinstance(data['media'], list) else data['media']
+                    return {
+                        'title': data.get('caption', 'Instagram Post')[:50] or 'Instagram Post',
+                        'author': data.get('author', 'Unknown'),
+                        'video_url': media.get('url'),
+                        'audio_url': None
+                    }
+        except:
+            pass
         
-        # Tentar endpoint alternativo - rapidapi instagram downloader
-        api_urls = [
-            f"https://instagram-downloader-download-videos.p.rapidapi.com/index?url={url}",
-            f"https://instacdn.com/api/instagram/?url={url}"
-        ]
+        # Estratégia 2: Tentar com igram.io
+        try:
+            api_url = f"https://igram.io/download?url={url}&type=json"
+            response = requests.get(api_url, timeout=10, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('media'):
+                    media = data['media'][0] if isinstance(data['media'], list) else data['media']
+                    return {
+                        'title': data.get('title', 'Instagram Post')[:50] or 'Instagram Post',
+                        'author': data.get('author', 'Unknown'),
+                        'video_url': media.get('url'),
+                        'audio_url': None
+                    }
+        except:
+            pass
         
-        # Tentar com um endpoint mais simples
-        # Vamos usar um serviço que funciona bem
-        api_url = "https://www.instagram.com/oembed/?url=" + url
-        response = requests.get(api_url, timeout=10, headers=headers)
+        # Estratégia 3: Tentar extrair direto do HTML do Instagram
+        try:
+            # Adicionar /embed ao URL para pegar HTML embeddável
+            response = requests.get(url, timeout=10, headers=headers)
+            if response.status_code == 200:
+                html = response.text
+                # Procurar por video_url ou media no HTML
+                if 'video_url' in html or 'media' in html:
+                    # Tentar parsejar JSON embutido
+                    import re
+                    match = re.search(r'"video_url":"([^"]+)"', html)
+                    if match:
+                        return {
+                            'title': 'Instagram Post',
+                            'author': 'Unknown',
+                            'video_url': match.group(1).replace('\\/', '/'),
+                            'audio_url': None
+                        }
+        except:
+            pass
         
-        if response.status_code != 200:
-            return None
-        
-        oembed_data = response.json()
-        
-        # Extrair informações do HTML embed
-        html = oembed_data.get('html', '')
-        
-        # Parse simples do HTML para extrair URL da mídia
-        if 'video' in html.lower():
-            media_type = 'video'
-        else:
-            media_type = 'image'
-        
-        # Tentar uma abordagem diferente - fazer requisição direta
-        # Instagram bloqueia muitas requisições, então vamos usar um serviço de proxy
-        
-        # Usar saveig.app API
-        save_ig_url = f"https://saveig.app/api/instagram/?url={url}"
-        resp = requests.get(save_ig_url, timeout=10, headers=headers)
-        
-        if resp.status_code == 200:
-            data = resp.json()
-            if data.get('media'):
-                media = data['media'][0] if isinstance(data['media'], list) else data['media']
-                return {
-                    'title': data.get('caption', 'Instagram Post')[:50] or 'Instagram Post',
-                    'author': data.get('author', 'Unknown'),
-                    'video_url': media.get('url'),
-                    'audio_url': None
-                }
-        
+        # Se nenhuma estratégia funcionou
         return None
         
     except Exception as e:
@@ -205,3 +215,4 @@ def download_file():
  
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
+ 
