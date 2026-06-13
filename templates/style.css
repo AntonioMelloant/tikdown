@@ -1,0 +1,765 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --border-color: #242424;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  
+  /* TikTok colors */
+  --tiktok-primary: #25f4ee;
+  --tiktok-secondary: #fe2c55;
+  
+  /* Instagram colors */
+  --instagram-primary: #833ab4;
+  --instagram-secondary: #fd1d1d;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  position: relative;
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Particles canvas */
+#particles-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+/* Grid overlay */
+.grid-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, 0.02) 25%, rgba(255, 255, 255, 0.02) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, 0.02) 75%, rgba(255, 255, 255, 0.02) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, 0.02) 25%, rgba(255, 255, 255, 0.02) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, 0.02) 75%, rgba(255, 255, 255, 0.02) 76%, transparent 77%, transparent);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Background orbs */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  transition: all 0.8s ease;
+}
+
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  top: -100px;
+  left: -100px;
+  background: var(--tiktok-primary);
+}
+
+.orb-2 {
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  right: -50px;
+  background: var(--tiktok-secondary);
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  bottom: -100px;
+  left: 10%;
+  background: var(--tiktok-secondary);
+}
+
+.orb-4 {
+  width: 250px;
+  height: 250px;
+  bottom: 20%;
+  right: 5%;
+  background: var(--tiktok-primary);
+}
+
+/* Instagram mode colors */
+body.instagram-mode .orb-1 { background: var(--instagram-primary); }
+body.instagram-mode .orb-2 { background: var(--instagram-secondary); }
+body.instagram-mode .orb-3 { background: var(--instagram-secondary); }
+body.instagram-mode .orb-4 { background: var(--instagram-primary); }
+
+/* Container */
+.container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  padding: 30px 20px;
+  text-align: center;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.logo-icon {
+  font-size: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-text {
+  background: linear-gradient(90deg, var(--tiktok-primary), var(--tiktok-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: all 0.6s ease;
+}
+
+body.instagram-mode .logo-text {
+  background: linear-gradient(90deg, var(--instagram-primary), var(--instagram-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Main */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px 60px;
+  gap: 30px;
+  max-width: 700px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+.tab-btn:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  border-color: var(--tiktok-primary);
+  color: var(--tiktok-primary);
+  background: rgba(37, 244, 238, 0.1);
+  box-shadow: 0 0 20px rgba(37, 244, 238, 0.2);
+}
+
+body.instagram-mode .tab-btn.active {
+  border-color: var(--instagram-secondary);
+  color: var(--instagram-secondary);
+  background: rgba(253, 29, 29, 0.1);
+  box-shadow: 0 0 20px rgba(253, 29, 29, 0.2);
+}
+
+.tab-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s ease;
+}
+
+.tab-btn:hover .tab-icon {
+  transform: scale(1.1);
+}
+
+.platform-logo {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.5;
+  stroke: currentColor;
+}
+
+.tab-label {
+  font-weight: 600;
+}
+
+.tab-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tab-btn.active .tab-glow {
+  opacity: 1;
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  animation: slideUp 0.6s ease forwards;
+  opacity: 0;
+  animation-delay: 0.1s;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1.1;
+  margin-bottom: 12px;
+  transition: all 0.6s ease;
+}
+
+.hero-subtitle {
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  color: var(--text-secondary);
+  font-weight: 400;
+  letter-spacing: -0.3px;
+  transition: all 0.6s ease;
+}
+
+/* Input card */
+.input-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideUp 0.6s ease forwards;
+  opacity: 0;
+  animation-delay: 0.2s;
+  transition: all 0.4s ease;
+}
+
+.input-card:focus-within {
+  border-color: var(--tiktok-primary);
+  background: rgba(37, 244, 238, 0.05);
+  box-shadow: 0 0 30px rgba(37, 244, 238, 0.15);
+}
+
+body.instagram-mode .input-card:focus-within {
+  border-color: var(--instagram-secondary);
+  background: rgba(253, 29, 29, 0.05);
+  box-shadow: 0 0 30px rgba(253, 29, 29, 0.15);
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0 14px;
+  transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--tiktok-primary);
+}
+
+body.instagram-mode .input-wrapper:focus-within {
+  border-color: var(--instagram-secondary);
+}
+
+.input-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: transform 0.4s ease;
+}
+
+.input-wrapper:focus-within .input-icon {
+  transform: scale(1.2);
+}
+
+.url-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  padding: 14px 0;
+  caret-color: var(--tiktok-primary);
+  transition: caret-color 0.3s ease;
+}
+
+body.instagram-mode .url-input {
+  caret-color: var(--instagram-secondary);
+}
+
+.url-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  display: none;
+  transition: color 0.2s ease;
+}
+
+.clear-btn:hover {
+  color: var(--text-primary);
+}
+
+.clear-btn.visible {
+  display: block;
+}
+
+.download-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--tiktok-primary), var(--tiktok-secondary));
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+body.instagram-mode .download-btn {
+  background: linear-gradient(135deg, var(--instagram-primary), var(--instagram-secondary));
+}
+
+.download-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(37, 244, 238, 0.3);
+}
+
+body.instagram-mode .download-btn:hover:not(:disabled) {
+  box-shadow: 0 10px 30px rgba(253, 29, 29, 0.3);
+}
+
+.download-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.btn-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Loading state */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: slideUp 0.6s ease forwards;
+}
+
+.spinner-ring {
+  width: 40px;
+  height: 40px;
+  position: relative;
+}
+
+.spinner-ring div {
+  position: absolute;
+  border: 3px solid transparent;
+  border-top-color: var(--tiktok-primary);
+  border-radius: 50%;
+  animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+body.instagram-mode .spinner-ring div {
+  border-top-color: var(--instagram-secondary);
+}
+
+.spinner-ring div:nth-child(1) {
+  width: 40px;
+  height: 40px;
+  animation-delay: -0.45s;
+}
+
+.spinner-ring div:nth-child(2) {
+  width: 32px;
+  height: 32px;
+  animation-delay: -0.3s;
+}
+
+.spinner-ring div:nth-child(3) {
+  width: 24px;
+  height: 24px;
+  animation-delay: -0.15s;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Result panel */
+.result-panel {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px solid var(--tiktok-primary);
+  border-radius: 16px;
+  padding: 20px;
+  animation: slideUp 0.6s ease forwards;
+  transition: all 0.4s ease;
+}
+
+body.instagram-mode .result-panel {
+  border-color: var(--instagram-secondary);
+}
+
+.result-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.result-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.result-thumb {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.play-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  background: var(--tiktok-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+body.instagram-mode .play-badge {
+  background: var(--instagram-secondary);
+}
+
+.result-meta {
+  flex: 1;
+}
+
+.result-platform {
+  font-size: 0.8rem;
+  color: var(--tiktok-primary);
+  font-weight: 600;
+  margin-bottom: 4px;
+  transition: color 0.3s ease;
+}
+
+body.instagram-mode .result-platform {
+  color: var(--instagram-secondary);
+}
+
+.result-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.result-author {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.result-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.result-option {
+  background: var(--bg-secondary);
+  padding: 14px 16px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+}
+
+.result-option:hover {
+  background: rgba(37, 244, 238, 0.1);
+}
+
+body.instagram-mode .result-option:hover {
+  background: rgba(253, 29, 29, 0.1);
+}
+
+.option-icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.option-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.option-note {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.try-another-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.try-another-btn:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+/* Error state */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding: 30px 20px;
+  background: rgba(248, 113, 113, 0.05);
+  border: 2px solid rgba(248, 113, 113, 0.2);
+  border-radius: 16px;
+  animation: slideUp 0.6s ease forwards;
+}
+
+.error-icon {
+  font-size: 32px;
+}
+
+.error-msg {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Features strip */
+.features {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  animation: slideUp 0.6s ease forwards;
+  opacity: 0;
+  animation-delay: 0.3s;
+  flex-wrap: wrap;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+}
+
+.feature-item:hover {
+  color: var(--text-primary);
+}
+
+.feature-icon {
+  font-size: 12px;
+  color: var(--tiktok-primary);
+  transition: color 0.3s ease;
+}
+
+body.instagram-mode .feature-icon {
+  color: var(--instagram-secondary);
+}
+
+.feature-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+}
+
+/* Footer */
+.footer {
+  position: relative;
+  z-index: 2;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .main {
+    padding: 30px 16px 50px;
+    gap: 20px;
+  }
+
+  .tabs {
+    gap: 12px;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .result-options {
+    grid-template-columns: 1fr;
+  }
+
+  .features {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .feature-divider {
+    display: none;
+  }
+}
