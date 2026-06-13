@@ -1,7 +1,7 @@
 // State management
 let currentMode = 'tiktok';
 let currentVideoData = null;
-
+ 
 // DOM elements
 const tabTikTok = document.getElementById('tab-tiktok');
 const tabInstagram = document.getElementById('tab-instagram');
@@ -22,16 +22,16 @@ const resultThumb = document.getElementById('result-thumb');
 const thumbPlaceholder = document.getElementById('thumb-placeholder');
 const errorMsg = document.getElementById('error-msg');
 const inputIcon = document.getElementById('input-icon');
-
+ 
 // Initialize particles
 initializeParticles();
-
+ 
 // Event listeners
 videoUrlInput.addEventListener('input', handleInput);
 videoUrlInput.addEventListener('paste', handlePaste);
 videoUrlInput.addEventListener('keydown', handleKeyDown);
 clearBtn.addEventListener('click', clearInput);
-
+ 
 // Particles canvas setup
 function initializeParticles() {
   const canvas = document.getElementById('particles-canvas');
@@ -93,7 +93,7 @@ function initializeParticles() {
     canvas.height = window.innerHeight;
   });
 }
-
+ 
 // Switch between tabs
 function switchTab(mode) {
   currentMode = mode;
@@ -119,13 +119,13 @@ function switchTab(mode) {
   
   resetState();
 }
-
+ 
 // Handle input
 function handleInput(e) {
   const hasValue = e.target.value.trim().length > 0;
   clearBtn.style.display = hasValue ? 'block' : 'none';
 }
-
+ 
 // Handle paste
 function handlePaste() {
   setTimeout(() => {
@@ -135,14 +135,14 @@ function handlePaste() {
     }
   }, 10);
 }
-
+ 
 // Handle Enter key
 function handleKeyDown(e) {
   if (e.key === 'Enter') {
     handleDownload();
   }
 }
-
+ 
 // Clear input
 function clearInput() {
   videoUrlInput.value = '';
@@ -150,7 +150,7 @@ function clearInput() {
   videoUrlInput.focus();
   resetState();
 }
-
+ 
 // Validate URL
 function isValidUrl(url) {
   if (currentMode === 'tiktok') {
@@ -159,7 +159,7 @@ function isValidUrl(url) {
     return url.includes('instagram.com') || url.includes('instagr.am') || url.includes('ig.me');
   }
 }
-
+ 
 // Main download handler
 async function handleDownload() {
   const url = videoUrlInput.value.trim();
@@ -169,6 +169,13 @@ async function handleDownload() {
     return;
   }
   
+  // Se for Instagram, redireciona pro saveig.app
+  if (currentMode === 'instagram') {
+    window.open(`https://saveig.app/instagram?url=${encodeURIComponent(url)}`, '_blank');
+    return;
+  }
+  
+  // Se for TikTok, processa normalmente
   showLoading();
   
   try {
@@ -190,13 +197,13 @@ async function handleDownload() {
     showError(error.message);
   }
 }
-
+ 
 // Show loading state
 function showLoading() {
   hideAll();
   loadingState.style.display = 'flex';
 }
-
+ 
 // Show result
 function showResult(data) {
   hideAll();
@@ -232,21 +239,21 @@ function showResult(data) {
   resultPanel.style.display = 'block';
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-
+ 
 // Show error
 function showError(message) {
   hideAll();
   errorMsg.textContent = message;
   errorState.style.display = 'flex';
 }
-
+ 
 // Hide all panels
 function hideAll() {
   loadingState.style.display = 'none';
   resultPanel.style.display = 'none';
   errorState.style.display = 'none';
 }
-
+ 
 // Reset to initial state
 function resetState() {
   hideAll();
@@ -254,7 +261,7 @@ function resetState() {
   inputCard.style.display = 'flex';
   document.querySelector('.features').style.display = 'flex';
 }
-
+ 
 // Download file
 function downloadFile(url, title, type) {
   const ext = type === 'audio' ? '.mp3' : '.mp4';
@@ -265,10 +272,11 @@ function downloadFile(url, title, type) {
     '_blank'
   );
 }
-
+ 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.add('tiktok-mode');
   tabTikTok.classList.add('active');
   resetState();
 });
+ 
