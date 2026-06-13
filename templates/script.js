@@ -1,6 +1,8 @@
 // State management
 let currentVideoData = null;
- 
+let cleanedFileBlob = null;
+let currentMode = 'download';
+
 // DOM elements
 const videoUrlInput = document.getElementById('video-url');
 const clearBtn = document.getElementById('clear-btn');
@@ -13,16 +15,30 @@ const resultOptions = document.getElementById('result-options');
 const resultTitle = document.getElementById('result-title');
 const resultAuthor = document.getElementById('result-author');
 const errorMsg = document.getElementById('error-msg');
- 
+
+// Clean mode elements
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+const cleanBtn = document.getElementById('clean-btn');
+const fileInfo = document.getElementById('file-info');
+const cleanLoading = document.getElementById('clean-loading');
+const cleanResult = document.getElementById('clean-result');
+const cleanError = document.getElementById('clean-error');
+const downloadCleanBtn = document.getElementById('download-clean-btn');
+const cleanErrorMsg = document.getElementById('clean-error-msg');
+
+let selectedFile = null;
+
 // Initialize particles
 initializeParticles();
- 
+
 // Event listeners
 videoUrlInput.addEventListener('input', handleInput);
 videoUrlInput.addEventListener('paste', handlePaste);
 videoUrlInput.addEventListener('keydown', handleKeyDown);
 clearBtn.addEventListener('click', clearInput);
- 
+uploadArea.addEventListener('click', () => fileInput.click());
+
 // Particles canvas setup
 function initializeParticles() {
   const canvas = document.getElementById('particles-canvas');
@@ -84,13 +100,30 @@ function initializeParticles() {
     canvas.height = window.innerHeight;
   });
 }
- 
+
+// Mode switching
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-download').classList.toggle('active', mode === 'download');
+  document.getElementById('mode-clean').classList.toggle('active', mode === 'clean');
+  document.getElementById('download-mode').style.display = mode === 'download' ? 'block' : 'none';
+  document.getElementById('clean-mode').style.display = mode === 'clean' ? 'block' : 'none';
+  
+  if (mode === 'download') {
+    resetState();
+  } else {
+    resetCleanMode();
+  }
+}
+
+// ========== DOWNLOAD MODE ==========
+
 // Handle input
 function handleInput(e) {
   const hasValue = e.target.value.trim().length > 0;
   clearBtn.style.display = hasValue ? 'block' : 'none';
 }
- 
+
 // Handle paste
 function handlePaste() {
   setTimeout(() => {
@@ -100,14 +133,14 @@ function handlePaste() {
     }
   }, 10);
 }
- 
+
 // Handle Enter key
 function handleKeyDown(e) {
   if (e.key === 'Enter') {
     handleDownload();
   }
 }
- 
+
 // Clear input
 function clearInput() {
   videoUrlInput.value = '';
@@ -115,12 +148,12 @@ function clearInput() {
   videoUrlInput.focus();
   resetState();
 }
- 
+
 // Validate URL
 function isValidUrl(url) {
   return url.includes('tiktok.com') || url.includes('vm.tiktok') || url.includes('vt.tiktok');
 }
- 
+
 // Main download handler
 async function handleDownload() {
   const url = videoUrlInput.value.trim();
@@ -151,13 +184,13 @@ async function handleDownload() {
     showError(error.message);
   }
 }
- 
+
 // Show loading state
 function showLoading() {
   hideAll();
   loadingState.style.display = 'flex';
 }
- 
+
 // Show result
 function showResult(data) {
   hideAll();
@@ -192,29 +225,29 @@ function showResult(data) {
   resultPanel.style.display = 'block';
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
- 
+
 // Show error
 function showError(message) {
   hideAll();
   errorMsg.textContent = message;
   errorState.style.display = 'flex';
 }
- 
+
 // Hide all panels
 function hideAll() {
   loadingState.style.display = 'none';
   resultPanel.style.display = 'none';
   errorState.style.display = 'none';
 }
- 
+
 // Reset to initial state
 function resetState() {
   hideAll();
   currentVideoData = null;
   inputCard.style.display = 'flex';
-  document.querySelector('.features').style.display = 'flex';
+  document.querySelector('#features-strip').style.display = 'flex';
 }
- 
+
 // Download file
 function downloadFile(url, title, type) {
   const ext = type === 'audio' ? '.mp3' : '.mp4';
@@ -225,10 +258,124 @@ function downloadFile(url, title, type) {
     '_blank'
   );
 }
- 
+
+// ========== CLEAN METADATA MODE ==========
+
+function handleDragOver(e) {
+  e.preventDefault();
+  uploadArea.style.borderColor = '#25f4ee';
+  uploadArea.style.backgroundColor = 'rgba(37, 244, 238, 0.05)';
+}
+
+function handleDragLeave(e) {
+  uploadArea.style.borderColor = '';
+  uploadArea.style.backgroundColor = '';
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  uploadArea.style.borderColor = '';
+  uploadArea.style.backgroundColor = '';
+  
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    selectedFile = files[0];
+    updateFileInfo();
+  }
+}
+
+function handleFileSelect(e) {
+  selectedFile = e.target.files[0];
+  updateFileInfo();
+}
+
+function updateFileInfo() {
+  if (selectedFile) {
+    const sizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
+    fileInfo.textContent = `📄 ${selectedFile.name} (${sizeMB} MB)`;
+    cleanBtn.style.display = 'block';
+  } else {
+    fileInfo.textContent = '';
+    cleanBtn.style.display = 'none';
+  }
+}
+
+async function handleClean() {
+  if (!selectedFile) {
+    showCleanError('Selecione um arquivo');
+    return;
+  }
+  
+  showCleanLoading();
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    const response = await fetch('/api/clean-metadata', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Erro ao limpar');
+    }
+    
+    cleanedFileBlob = await response.blob();
+    showCleanResult();
+  } catch (error) {
+    showCleanError(error.message);
+  }
+}
+
+function showCleanLoading() {
+  cleanLoading.style.display = 'flex';
+  cleanResult.style.display = 'none';
+  cleanError.style.display = 'none';
+}
+
+function showCleanResult() {
+  cleanLoading.style.display = 'none';
+  cleanResult.style.display = 'block';
+  cleanError.style.display = 'none';
+}
+
+function showCleanError(message) {
+  cleanLoading.style.display = 'none';
+  cleanResult.style.display = 'none';
+  cleanErrorMsg.textContent = message;
+  cleanError.style.display = 'flex';
+}
+
+function downloadCleanedFile() {
+  if (!cleanedFileBlob) return;
+  
+  const ext = selectedFile.name.split('.').pop();
+  const name = selectedFile.name.replace(/\.[^/.]+$/, '') + '_limpo.' + ext;
+  
+  const url = window.URL.createObjectURL(cleanedFileBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+function resetCleanMode() {
+  selectedFile = null;
+  cleanedFileBlob = null;
+  fileInput.value = '';
+  fileInfo.textContent = '';
+  cleanBtn.style.display = 'none';
+  cleanLoading.style.display = 'none';
+  cleanResult.style.display = 'none';
+  cleanError.style.display = 'none';
+}
+
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
-  document.body.classList.add('tiktok-mode');
   resetState();
 });
- 
