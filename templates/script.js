@@ -1,10 +1,7 @@
 // State management
-let currentMode = 'tiktok';
 let currentVideoData = null;
  
 // DOM elements
-const tabTikTok = document.getElementById('tab-tiktok');
-const tabInstagram = document.getElementById('tab-instagram');
 const videoUrlInput = document.getElementById('video-url');
 const clearBtn = document.getElementById('clear-btn');
 const downloadBtn = document.getElementById('download-btn');
@@ -12,16 +9,10 @@ const inputCard = document.getElementById('input-card');
 const loadingState = document.getElementById('loading-state');
 const resultPanel = document.getElementById('result-panel');
 const errorState = document.getElementById('error-state');
-const heroTitle = document.getElementById('hero-title');
-const heroSubtitle = document.getElementById('hero-subtitle');
 const resultOptions = document.getElementById('result-options');
 const resultTitle = document.getElementById('result-title');
 const resultAuthor = document.getElementById('result-author');
-const resultPlatform = document.getElementById('result-platform');
-const resultThumb = document.getElementById('result-thumb');
-const thumbPlaceholder = document.getElementById('thumb-placeholder');
 const errorMsg = document.getElementById('error-msg');
-const inputIcon = document.getElementById('input-icon');
  
 // Initialize particles
 initializeParticles();
@@ -94,32 +85,6 @@ function initializeParticles() {
   });
 }
  
-// Switch between tabs
-function switchTab(mode) {
-  currentMode = mode;
-  document.body.classList.remove('tiktok-mode', 'instagram-mode');
-  document.body.classList.add(mode === 'tiktok' ? 'tiktok-mode' : 'instagram-mode');
-  
-  tabTikTok.classList.toggle('active', mode === 'tiktok');
-  tabInstagram.classList.toggle('active', mode === 'instagram');
-  
-  if (mode === 'tiktok') {
-    heroTitle.textContent = 'Baixar do TikTok';
-    heroSubtitle.textContent = 'Cole o link e baixe em alta qualidade, sem marca d\'água';
-    videoUrlInput.placeholder = 'https://www.tiktok.com/@user/video/...';
-    inputIcon.textContent = '🎵';
-    thumbPlaceholder.textContent = '🎬';
-  } else {
-    heroTitle.textContent = 'Baixar do Instagram';
-    heroSubtitle.textContent = 'Fotos e vídeos do Instagram em alta qualidade';
-    videoUrlInput.placeholder = 'https://instagram.com/p/ABC123def/...';
-    inputIcon.textContent = '📷';
-    thumbPlaceholder.textContent = '📷';
-  }
-  
-  resetState();
-}
- 
 // Handle input
 function handleInput(e) {
   const hasValue = e.target.value.trim().length > 0;
@@ -153,11 +118,7 @@ function clearInput() {
  
 // Validate URL
 function isValidUrl(url) {
-  if (currentMode === 'tiktok') {
-    return url.includes('tiktok.com') || url.includes('vm.tiktok') || url.includes('vt.tiktok');
-  } else {
-    return url.includes('instagram.com') || url.includes('instagr.am') || url.includes('ig.me');
-  }
+  return url.includes('tiktok.com') || url.includes('vm.tiktok') || url.includes('vt.tiktok');
 }
  
 // Main download handler
@@ -165,17 +126,10 @@ async function handleDownload() {
   const url = videoUrlInput.value.trim();
   
   if (!url || !isValidUrl(url)) {
-    showError(`Cole um link válido do ${currentMode === 'tiktok' ? 'TikTok' : 'Instagram'}`);
+    showError('Cole um link válido do TikTok');
     return;
   }
   
-  // Se for Instagram, redireciona pro snapinsta.com
-  if (currentMode === 'instagram') {
-    window.open(`https://snapinsta.com/?url=${encodeURIComponent(url)}`, '_blank');
-    return;
-  }
-  
-  // Se for TikTok, processa normalmente
   showLoading();
   
   try {
@@ -210,7 +164,6 @@ function showResult(data) {
   
   resultTitle.textContent = data.title;
   resultAuthor.textContent = `@${data.author}`;
-  resultPlatform.textContent = currentMode === 'tiktok' ? 'TikTok' : 'Instagram';
   
   resultOptions.innerHTML = '';
   
@@ -276,7 +229,6 @@ function downloadFile(url, title, type) {
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.add('tiktok-mode');
-  tabTikTok.classList.add('active');
   resetState();
 });
  
