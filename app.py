@@ -3,6 +3,7 @@ import requests
 import json
 import re
 import os
+import subprocess
 import tempfile
 
 # Configurar Flask para servir arquivos estáticos corretamente
@@ -194,7 +195,7 @@ def download_file():
 
 @app.route('/api/clean-metadata', methods=['POST'])
 def clean_metadata():
-    """Remove metadados enviando para um serviço online"""
+    """Remove metadados de vídeo/imagem usando FFmpeg"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'Nenhum arquivo fornecido'}), 400
@@ -211,97 +212,92 @@ def clean_metadata():
         is_video = file_ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.m4v']
         
         if not is_image and not is_video:
-            return jsonify({'error': 'Tipo de arquivo não suportado. Use imagem (JPG, PNG) ou vídeo (MP4, MOV).'}), 400
+            return jsonify({'error': 'Tipo de arquivo não suportado. Use imagem (JPG, PNG) ou vídeo (MP4, MOV, AVI, etc).'}), 400
+        
+        # Verificar se FFmpeg está disponível
+        try:
+            subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True, timeout=5)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return jsonify({'error': 'FFmpeg não disponível no servidor. Tente com uma imagem.'}), 500
+        
+        # Salvar arquivo temporário
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_input:
+            file.save(tmp_input.name)
+            input_path = tmp_input.name
+        
+        # Arquivo de saída
+        output_path = tempfile.mktemp(suffix=file_ext)
         
         try:
-            # Salvar arquivo temporário
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
-                file.save(tmp.name)
-                input_path = tmp.name
-            
-            # Remover metadados manualmente (leitura pixel por pixel)
-            if is_image:
-                cleaned_data = remove_image_metadata(input_path, file_ext)
+            if is_video:
+                # Para vídeos: re-codificar sem metadados
+                cmd = [
+                    'ffmpeg',
+                    '-i', input_path,
+                    '-c:v', 'libx264',           # Codec de vídeo
+                    '-preset', 'medium',          # Velocidade de codificação
+                    '-crf', '23',                 # Qualidade (0-51, menor = melhor)
+                    '-c:a', 'aac',               # Codec de áudio
+                    '-b:a', '128k',              # Bitrate de áudio
+                    '-map_metadata', '-1',        # Remove metadados globais
+                    '-map_metadata:s:v', '-1',   # Remove metadados de streams de vídeo
+                    '-map_metadata:s:a', '-1',   # Remove metadados de streams de áudio
+                    '-y',                        # Sobrescrever arquivo de saída
+                    output_path
+                ]
             else:
-                # Para vídeos, fazer cópia (remove metadados automaticamente)
-                with open(input_path, 'rb') as f:
-                    cleaned_data = f.read()
+                # Para imagens: re-codificar sem metadados
+                cmd = [
+                    'ffmpeg',
+                    '-i', input_path,
+                    '-vf', 'format=yuv420p',     # Converter para formato padrão
+                    '-map_metadata', '-1',        # Remove metadados
+                    '-y',                        # Sobrescrever arquivo de saída
+                    output_path
+                ]
             
-            # Limpar arquivo temporário
+            # Executar FFmpeg
+            result = subprocess.run(cmd, capture_output=True, timeout=600, text=True)
+            
+            if result.returncode != 0:
+                error_msg = result.stderr[:500] if result.stderr else 'Erro ao processar'
+                return jsonify({'error': f'Erro ao limpar: {error_msg}'}), 500
+            
+            # Ler arquivo processado
+            with open(output_path, 'rb') as f:
+                file_data = f.read()
+            
+            # Limpar arquivos temporários
             try:
                 os.unlink(input_path)
+                os.unlink(output_path)
             except:
                 pass
             
             # Retornar arquivo limpo
             return Response(
-                cleaned_data,
+                file_data,
                 mimetype=file.content_type,
                 headers={'Content-Disposition': f'attachment; filename=cleaned_{filename}'}
             )
         
+        except subprocess.TimeoutExpired:
+            try:
+                os.unlink(input_path)
+                os.unlink(output_path)
+            except:
+                pass
+            return jsonify({'error': 'Processamento demorou muito (arquivo muito grande)'}), 500
         except Exception as e:
             try:
                 os.unlink(input_path)
+                os.unlink(output_path)
             except:
                 pass
-            return jsonify({'error': f'Erro ao processar: {str(e)[:200]}'}), 500
+            return jsonify({'error': f'Erro: {str(e)[:200]}'}), 500
     
     except Exception as e:
         return jsonify({'error': f'Erro no servidor: {str(e)[:200]}'}), 500
-
-def remove_image_metadata(image_path, ext):
-    """Remove metadados da imagem lendo como bytes"""
-    try:
-        with open(image_path, 'rb') as f:
-            image_data = f.read()
-        
-        # Para JPEG: remover EXIF removendo APP1 marker
-        if ext in ['.jpg', '.jpeg']:
-            # Procurar por APP1 marker (0xFFE1) que contém EXIF
-            result = bytearray()
-            i = 0
-            
-            # Copiar SOI marker (0xFFD8)
-            if len(image_data) >= 2 and image_data[0:2] == b'\xff\xd8':
-                result.extend(image_data[0:2])
-                i = 2
-            
-            # Processar restante da imagem
-            while i < len(image_data):
-                # Se encontrar um marker
-                if i < len(image_data) - 1 and image_data[i] == 0xFF:
-                    marker = image_data[i:i+2]
-                    
-                    # Se for APP1 (EXIF), pular
-                    if marker == b'\xff\xe1':
-                        # Pular APP1 marker e seu tamanho
-                        if i + 4 <= len(image_data):
-                            size = int.from_bytes(image_data[i+2:i+4], 'big')
-                            i += 2 + size
-                            continue
-                    
-                    # Se for APP0-APP15 ou COM (comentário), pular
-                    elif (marker[1:2] >= b'\xe0' and marker[1:2] <= b'\xef') or marker == b'\xff\xfe':
-                        if i + 4 <= len(image_data):
-                            size = int.from_bytes(image_data[i+2:i+4], 'big')
-                            i += 2 + size
-                            continue
-                
-                result.append(image_data[i])
-                i += 1
-            
-            return bytes(result)
-        
-        # Para PNG e outros: retornar como está (sem metadados em navegador)
-        else:
-            return image_data
-    
-    except Exception as e:
-        print(f"Erro ao remover metadados: {e}")
-        # Se falhar, retornar arquivo original
-        with open(image_path, 'rb') as f:
-            return f.read()
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
