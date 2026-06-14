@@ -1,5 +1,5 @@
-[build]
-cmds = ["pip install -r requirements.txt"]
-
 [install]
 pkgs = ["ffmpeg"]
+
+[build]
+cmds = ["pip install -r requirements.txt"]
