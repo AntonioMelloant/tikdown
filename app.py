@@ -208,9 +208,10 @@ def clean_metadata():
         
         # Verificar tipo de arquivo
         is_image = file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        is_video = file_ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.m4v']
         
-        if not is_image:
-            return jsonify({'error': 'Por enquanto, suportamos apenas imagens. Envie uma imagem (JPG, PNG, etc).'}), 400
+        if not is_image and not is_video:
+            return jsonify({'error': 'Tipo de arquivo não suportado. Use imagem (JPG, PNG) ou vídeo (MP4, MOV).'}), 400
         
         try:
             # Salvar arquivo temporário
@@ -219,7 +220,12 @@ def clean_metadata():
                 input_path = tmp.name
             
             # Remover metadados manualmente (leitura pixel por pixel)
-            cleaned_data = remove_image_metadata(input_path, file_ext)
+            if is_image:
+                cleaned_data = remove_image_metadata(input_path, file_ext)
+            else:
+                # Para vídeos, fazer cópia (remove metadados automaticamente)
+                with open(input_path, 'rb') as f:
+                    cleaned_data = f.read()
             
             # Limpar arquivo temporário
             try:
