@@ -1,3 +1,11 @@
+from flask import Flask, render_template, request, jsonify, Response
+import requests
+import json
+import re
+import os
+import subprocess
+import tempfile
+
 # Configurar Flask para servir arquivos estáticos corretamente
 app = Flask(__name__, static_folder='templates', static_url_path='')
 
@@ -211,9 +219,6 @@ def download_file():
 def clean_metadata():
     """Remove metadados de vídeo/imagem usando FFmpeg"""
     try:
-        import subprocess
-        import tempfile
-        
         if 'file' not in request.files:
             return jsonify({'error': 'Nenhum arquivo fornecido'}), 400
         
