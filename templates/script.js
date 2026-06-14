@@ -1,45 +1,55 @@
-// State management
+// State
 let currentVideoData = null;
 let cleanedFileBlob = null;
-let currentMode = 'download';
+let selectedFile = null;
 
-// DOM elements
+// DOM
 const videoUrlInput = document.getElementById('video-url');
 const clearBtn = document.getElementById('clear-btn');
 const downloadBtn = document.getElementById('download-btn');
-const inputCard = document.getElementById('input-card');
 const loadingState = document.getElementById('loading-state');
 const resultPanel = document.getElementById('result-panel');
 const errorState = document.getElementById('error-state');
-const resultOptions = document.getElementById('result-options');
-const resultTitle = document.getElementById('result-title');
-const resultAuthor = document.getElementById('result-author');
-const errorMsg = document.getElementById('error-msg');
-
-// Clean mode elements
-const uploadArea = document.getElementById('upload-area');
 const fileInput = document.getElementById('file-input');
+const uploadArea = document.getElementById('upload-area');
 const cleanBtn = document.getElementById('clean-btn');
 const fileInfo = document.getElementById('file-info');
 const cleanLoading = document.getElementById('clean-loading');
 const cleanResult = document.getElementById('clean-result');
 const cleanError = document.getElementById('clean-error');
-const downloadCleanBtn = document.getElementById('download-clean-btn');
-const cleanErrorMsg = document.getElementById('clean-error-msg');
 
-let selectedFile = null;
-
-// Initialize particles
+// Initialize
 initializeParticles();
+
+// Tab switching
+function switchTab(tab) {
+  const panels = document.querySelectorAll('.tab-panel');
+  const buttons = document.querySelectorAll('.tab-btn');
+  
+  panels.forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
+  buttons.forEach(b => b.classList.remove('active'));
+  
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  document.getElementById(`panel-${tab}`).style.display = 'block';
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  
+  if (tab === 'download') {
+    resetDownload();
+  } else {
+    resetClean();
+  }
+}
 
 // Event listeners
 videoUrlInput.addEventListener('input', handleInput);
 videoUrlInput.addEventListener('paste', handlePaste);
 videoUrlInput.addEventListener('keydown', handleKeyDown);
 clearBtn.addEventListener('click', clearInput);
-uploadArea.addEventListener('click', () => fileInput.click());
 
-// Particles canvas setup
+// Particles
 function initializeParticles() {
   const canvas = document.getElementById('particles-canvas');
   const ctx = canvas.getContext('2d');
@@ -63,7 +73,6 @@ function initializeParticles() {
     update() {
       this.x += this.speedX;
       this.y += this.speedY;
-      
       if (this.x < 0) this.x = canvas.width;
       if (this.x > canvas.width) this.x = 0;
       if (this.y < 0) this.y = canvas.height;
@@ -84,12 +93,10 @@ function initializeParticles() {
   
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     particles.forEach(particle => {
       particle.update();
       particle.draw();
     });
-    
     requestAnimationFrame(animate);
   }
   
@@ -101,30 +108,12 @@ function initializeParticles() {
   });
 }
 
-// Mode switching
-function switchMode(mode) {
-  currentMode = mode;
-  document.getElementById('mode-download').classList.toggle('active', mode === 'download');
-  document.getElementById('mode-clean').classList.toggle('active', mode === 'clean');
-  document.getElementById('download-mode').style.display = mode === 'download' ? 'block' : 'none';
-  document.getElementById('clean-mode').style.display = mode === 'clean' ? 'block' : 'none';
-  
-  if (mode === 'download') {
-    resetState();
-  } else {
-    resetCleanMode();
-  }
-}
+// ===== DOWNLOAD MODE =====
 
-// ========== DOWNLOAD MODE ==========
-
-// Handle input
 function handleInput(e) {
-  const hasValue = e.target.value.trim().length > 0;
-  clearBtn.style.display = hasValue ? 'block' : 'none';
+  clearBtn.style.display = e.target.value.trim().length > 0 ? 'block' : 'none';
 }
 
-// Handle paste
 function handlePaste() {
   setTimeout(() => {
     const url = videoUrlInput.value.trim();
@@ -134,36 +123,32 @@ function handlePaste() {
   }, 10);
 }
 
-// Handle Enter key
 function handleKeyDown(e) {
   if (e.key === 'Enter') {
     handleDownload();
   }
 }
 
-// Clear input
 function clearInput() {
   videoUrlInput.value = '';
   clearBtn.style.display = 'none';
   videoUrlInput.focus();
-  resetState();
+  resetDownload();
 }
 
-// Validate URL
 function isValidUrl(url) {
   return url.includes('tiktok.com') || url.includes('vm.tiktok') || url.includes('vt.tiktok');
 }
 
-// Main download handler
 async function handleDownload() {
   const url = videoUrlInput.value.trim();
   
   if (!url || !isValidUrl(url)) {
-    showError('Cole um link válido do TikTok');
+    showDownloadError('Cole um link válido do TikTok');
     return;
   }
   
-  showLoading();
+  showDownloadLoading();
   
   try {
     const response = await fetch('/api/download', {
@@ -178,77 +163,62 @@ async function handleDownload() {
       throw new Error(data.error || 'Erro ao processar');
     }
     
-    currentVideoData = data;
-    showResult(data);
+    showDownloadResult(data);
   } catch (error) {
-    showError(error.message);
+    showDownloadError(error.message);
   }
 }
 
-// Show loading state
-function showLoading() {
-  hideAll();
+function showDownloadLoading() {
   loadingState.style.display = 'flex';
-}
-
-// Show result
-function showResult(data) {
-  hideAll();
-  
-  resultTitle.textContent = data.title;
-  resultAuthor.textContent = `@${data.author}`;
-  
-  resultOptions.innerHTML = '';
-  
-  if (data.video_url) {
-    const videoBtn = document.createElement('button');
-    videoBtn.className = 'result-option';
-    videoBtn.innerHTML = `
-      <span class="option-label"><span class="option-icon">🎬</span>Vídeo HD</span>
-      <span class="option-note">Sem marca d'água</span>
-    `;
-    videoBtn.onclick = () => downloadFile(data.video_url, data.title, 'video');
-    resultOptions.appendChild(videoBtn);
-  }
-  
-  if (data.audio_url) {
-    const audioBtn = document.createElement('button');
-    audioBtn.className = 'result-option';
-    audioBtn.innerHTML = `
-      <span class="option-label"><span class="option-icon">🎵</span>Áudio</span>
-      <span class="option-note">MP3</span>
-    `;
-    audioBtn.onclick = () => downloadFile(data.audio_url, data.title, 'audio');
-    resultOptions.appendChild(audioBtn);
-  }
-  
-  resultPanel.style.display = 'block';
-  resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// Show error
-function showError(message) {
-  hideAll();
-  errorMsg.textContent = message;
-  errorState.style.display = 'flex';
-}
-
-// Hide all panels
-function hideAll() {
-  loadingState.style.display = 'none';
   resultPanel.style.display = 'none';
   errorState.style.display = 'none';
 }
 
-// Reset to initial state
-function resetState() {
-  hideAll();
-  currentVideoData = null;
-  inputCard.style.display = 'flex';
-  document.querySelector('#features-strip').style.display = 'flex';
+function showDownloadResult(data) {
+  document.getElementById('result-title').textContent = data.title;
+  document.getElementById('result-author').textContent = `@${data.author}`;
+  
+  const resultOptions = document.getElementById('result-options');
+  resultOptions.innerHTML = '';
+  
+  if (data.video_url) {
+    const btn = document.createElement('button');
+    btn.className = 'result-option';
+    btn.innerHTML = `<span class="option-label"><span class="option-icon">🎬</span>Vídeo HD</span><span class="option-note">Sem marca d'água</span>`;
+    btn.onclick = () => downloadFile(data.video_url, data.title, 'video');
+    resultOptions.appendChild(btn);
+  }
+  
+  if (data.audio_url) {
+    const btn = document.createElement('button');
+    btn.className = 'result-option';
+    btn.innerHTML = `<span class="option-label"><span class="option-icon">🎵</span>Áudio</span><span class="option-note">MP3</span>`;
+    btn.onclick = () => downloadFile(data.audio_url, data.title, 'audio');
+    resultOptions.appendChild(btn);
+  }
+  
+  loadingState.style.display = 'none';
+  resultPanel.style.display = 'block';
+  errorState.style.display = 'none';
 }
 
-// Download file
+function showDownloadError(message) {
+  document.getElementById('error-msg').textContent = message;
+  loadingState.style.display = 'none';
+  resultPanel.style.display = 'none';
+  errorState.style.display = 'flex';
+}
+
+function resetDownload() {
+  videoUrlInput.value = '';
+  clearBtn.style.display = 'none';
+  loadingState.style.display = 'none';
+  resultPanel.style.display = 'none';
+  errorState.style.display = 'none';
+  document.getElementById('features-strip').style.display = 'flex';
+}
+
 function downloadFile(url, title, type) {
   const ext = type === 'audio' ? '.mp3' : '.mp4';
   const cleanTitle = title.substring(0, 50).replace(/[^\w\s-]/g, '');
@@ -259,43 +229,45 @@ function downloadFile(url, title, type) {
   );
 }
 
-// ========== CLEAN METADATA MODE ==========
+// ===== CLEAN METADATA MODE =====
 
 function handleDragOver(e) {
   e.preventDefault();
   uploadArea.style.borderColor = '#25f4ee';
-  uploadArea.style.backgroundColor = 'rgba(37, 244, 238, 0.05)';
+  uploadArea.style.background = 'rgba(37, 244, 238, 0.08)';
 }
 
 function handleDragLeave(e) {
   uploadArea.style.borderColor = '';
-  uploadArea.style.backgroundColor = '';
+  uploadArea.style.background = '';
 }
 
 function handleDrop(e) {
   e.preventDefault();
   uploadArea.style.borderColor = '';
-  uploadArea.style.backgroundColor = '';
+  uploadArea.style.background = '';
   
-  const files = e.dataTransfer.files;
-  if (files.length > 0) {
-    selectedFile = files[0];
+  if (e.dataTransfer.files.length > 0) {
+    selectedFile = e.dataTransfer.files[0];
     updateFileInfo();
   }
 }
 
 function handleFileSelect(e) {
-  selectedFile = e.target.files[0];
-  updateFileInfo();
+  if (e.target.files.length > 0) {
+    selectedFile = e.target.files[0];
+    updateFileInfo();
+  }
 }
 
 function updateFileInfo() {
   if (selectedFile) {
     const sizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
     fileInfo.textContent = `📄 ${selectedFile.name} (${sizeMB} MB)`;
-    cleanBtn.style.display = 'block';
+    fileInfo.style.display = 'block';
+    cleanBtn.style.display = 'flex';
   } else {
-    fileInfo.textContent = '';
+    fileInfo.style.display = 'none';
     cleanBtn.style.display = 'none';
   }
 }
@@ -306,7 +278,9 @@ async function handleClean() {
     return;
   }
   
-  showCleanLoading();
+  cleanLoading.style.display = 'flex';
+  cleanResult.style.display = 'none';
+  cleanError.style.display = 'none';
   
   try {
     const formData = new FormData();
@@ -323,28 +297,17 @@ async function handleClean() {
     }
     
     cleanedFileBlob = await response.blob();
-    showCleanResult();
+    cleanLoading.style.display = 'none';
+    cleanResult.style.display = 'block';
   } catch (error) {
     showCleanError(error.message);
   }
 }
 
-function showCleanLoading() {
-  cleanLoading.style.display = 'flex';
-  cleanResult.style.display = 'none';
-  cleanError.style.display = 'none';
-}
-
-function showCleanResult() {
-  cleanLoading.style.display = 'none';
-  cleanResult.style.display = 'block';
-  cleanError.style.display = 'none';
-}
-
 function showCleanError(message) {
+  document.getElementById('clean-error-msg').textContent = message;
   cleanLoading.style.display = 'none';
   cleanResult.style.display = 'none';
-  cleanErrorMsg.textContent = message;
   cleanError.style.display = 'flex';
 }
 
@@ -364,18 +327,18 @@ function downloadCleanedFile() {
   window.URL.revokeObjectURL(url);
 }
 
-function resetCleanMode() {
+function resetClean() {
   selectedFile = null;
   cleanedFileBlob = null;
   fileInput.value = '';
-  fileInfo.textContent = '';
+  fileInfo.style.display = 'none';
   cleanBtn.style.display = 'none';
   cleanLoading.style.display = 'none';
   cleanResult.style.display = 'none';
   cleanError.style.display = 'none';
 }
 
-// Initialize on load
+// Init
 document.addEventListener('DOMContentLoaded', () => {
-  resetState();
+  resetDownload();
 });
