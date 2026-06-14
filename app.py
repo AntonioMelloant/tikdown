@@ -230,29 +230,23 @@ def clean_metadata():
         
         try:
             if is_video:
-                # Para vídeos: re-codificar sem metadados
+                # Para vídeos: copiar streams sem metadados (mais rápido)
                 cmd = [
                     'ffmpeg',
                     '-i', input_path,
-                    '-c:v', 'libx264',           # Codec de vídeo
-                    '-preset', 'medium',          # Velocidade de codificação
-                    '-crf', '23',                 # Qualidade (0-51, menor = melhor)
-                    '-c:a', 'aac',               # Codec de áudio
-                    '-b:a', '128k',              # Bitrate de áudio
+                    '-c', 'copy',                 # Copiar sem re-codificar
                     '-map_metadata', '-1',        # Remove metadados globais
-                    '-map_metadata:s:v', '-1',   # Remove metadados de streams de vídeo
-                    '-map_metadata:s:a', '-1',   # Remove metadados de streams de áudio
-                    '-y',                        # Sobrescrever arquivo de saída
+                    '-map_metadata:s', '-1',      # Remove metadados de todos streams
+                    '-y',                         # Sobrescrever arquivo de saída
                     output_path
                 ]
             else:
-                # Para imagens: re-codificar sem metadados
+                # Para imagens: re-codificar simples
                 cmd = [
                     'ffmpeg',
                     '-i', input_path,
-                    '-vf', 'format=yuv420p',     # Converter para formato padrão
                     '-map_metadata', '-1',        # Remove metadados
-                    '-y',                        # Sobrescrever arquivo de saída
+                    '-y',                         # Sobrescrever arquivo de saída
                     output_path
                 ]
             
