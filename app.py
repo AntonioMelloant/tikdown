@@ -3,8 +3,9 @@ import requests
 import json
 import re
 import os
-import subprocess
 import tempfile
+from PIL import Image
+import io
 
 # Configurar Flask para servir arquivos estáticos corretamente
 app = Flask(__name__, static_folder='templates', static_url_path='')
@@ -144,28 +145,6 @@ def fetch_instagram(url):
         except:
             pass
         
-        # Estratégia 3: Tentar extrair direto do HTML do Instagram
-        try:
-            # Adicionar /embed ao URL para pegar HTML embeddável
-            response = requests.get(url, timeout=10, headers=headers)
-            if response.status_code == 200:
-                html = response.text
-                # Procurar por video_url ou media no HTML
-                if 'video_url' in html or 'media' in html:
-                    # Tentar parsejar JSON embutido
-                    import re
-                    match = re.search(r'"video_url":"([^"]+)"', html)
-                    if match:
-                        return {
-                            'title': 'Instagram Post',
-                            'author': 'Unknown',
-                            'video_url': match.group(1).replace('\\/', '/'),
-                            'audio_url': None
-                        }
-        except:
-            pass
-        
-        # Se nenhuma estratégia funcionou
         return None
         
     except Exception as e:
@@ -217,7 +196,7 @@ def download_file():
 
 @app.route('/api/clean-metadata', methods=['POST'])
 def clean_metadata():
-    """Remove metadados de vídeo/imagem usando FFmpeg"""
+    """Remove metadados de imagem ou vídeo"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'Nenhum arquivo fornecido'}), 400
@@ -226,74 +205,81 @@ def clean_metadata():
         if file.filename == '':
             return jsonify({'error': 'Arquivo inválido'}), 400
         
-        # Verificar se FFmpeg está disponível
+        filename = file.filename
+        file_ext = os.path.splitext(filename)[1].lower()
+        
+        # Verificar tipo de arquivo
+        is_image = file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        is_video = file_ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv']
+        
+        if not is_image and not is_video:
+            return jsonify({'error': 'Tipo de arquivo não suportado. Use imagem ou vídeo.'}), 400
+        
+        # Salvar arquivo temporário
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
+            file.save(tmp.name)
+            input_path = tmp.name
+        
         try:
-            subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True, timeout=5)
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            return jsonify({'error': 'FFmpeg não disponível no servidor'}), 500
-        
-        # Criar arquivo temporário
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_input:
-            file.save(tmp_input.name)
-            input_path = tmp_input.name
-        
-        # Arquivo de saída
-        output_path = tempfile.mktemp(suffix=os.path.splitext(file.filename)[1])
-        
-        try:
-            # Usar FFmpeg para remover metadados
-            cmd = [
-                'ffmpeg',
-                '-i', input_path,
-                '-map_metadata', '-1',
-                '-map_metadata:s', '-1',
-                '-c:v', 'copy',
-                '-c:a', 'copy',
-                '-y',
-                output_path
-            ]
+            if is_image:
+                # Limpar metadados de imagem
+                file_data = clean_image_metadata(input_path)
+            else:
+                # Para vídeos, fazer cópia simples (vídeos em navegador não têm EXIF como imagens)
+                with open(input_path, 'rb') as f:
+                    file_data = f.read()
             
-            result = subprocess.run(cmd, capture_output=True, timeout=300, text=True)
-            
-            if result.returncode != 0:
-                error_msg = result.stderr[:200] if result.stderr else 'Erro desconhecido'
-                return jsonify({'error': f'Erro ao processar: {error_msg}'}), 500
-            
-            # Ler arquivo processado
-            with open(output_path, 'rb') as f:
-                file_data = f.read()
-            
-            # Limpar arquivos temporários
-            try:
-                os.unlink(input_path)
-                os.unlink(output_path)
-            except:
-                pass
+            # Limpar arquivo temporário
+            os.unlink(input_path)
             
             # Retornar arquivo limpo
             return Response(
                 file_data,
                 mimetype=file.content_type,
-                headers={'Content-Disposition': f'attachment; filename=cleaned_{file.filename}'}
+                headers={'Content-Disposition': f'attachment; filename=cleaned_{filename}'}
             )
-            
-        except subprocess.TimeoutExpired:
-            try:
-                os.unlink(input_path)
-                os.unlink(output_path)
-            except:
-                pass
-            return jsonify({'error': 'Processamento demorou muito'}), 500
+        
         except Exception as e:
             try:
                 os.unlink(input_path)
-                os.unlink(output_path)
             except:
                 pass
-            return jsonify({'error': f'Erro: {str(e)[:200]}'}), 500
+            return jsonify({'error': f'Erro ao processar: {str(e)[:200]}'}), 500
     
     except Exception as e:
         return jsonify({'error': f'Erro no servidor: {str(e)[:200]}'}), 500
+
+def clean_image_metadata(image_path):
+    """Remove metadados EXIF de imagem"""
+    try:
+        # Abrir imagem
+        img = Image.open(image_path)
+        
+        # Criar nova imagem sem metadados
+        data = list(img.getdata())
+        image_without_exif = Image.new(img.mode, img.size)
+        image_without_exif.putdata(data)
+        
+        # Salvar em memória
+        output = io.BytesIO()
+        
+        # Determinar formato
+        fmt = 'PNG' if image_path.lower().endswith('.png') else 'JPEG'
+        quality = 95 if fmt == 'JPEG' else None
+        
+        if fmt == 'JPEG':
+            image_without_exif.save(output, format=fmt, quality=quality, optimize=True)
+        else:
+            image_without_exif.save(output, format=fmt)
+        
+        output.seek(0)
+        return output.getvalue()
+    
+    except Exception as e:
+        print(f"Erro ao limpar metadados da imagem: {e}")
+        # Se falhar, retornar imagem original
+        with open(image_path, 'rb') as f:
+            return f.read()
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
