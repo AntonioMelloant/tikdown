@@ -11,21 +11,21 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="tiktok-mode">
- 
+
   <!-- Particle canvas -->
   <canvas id="particles-canvas"></canvas>
- 
+
   <!-- Animated dot grid -->
   <div class="grid-overlay" id="grid-overlay"></div>
- 
+
   <!-- Ambient background orbs -->
   <div class="bg-orb orb-1" id="orb1"></div>
   <div class="bg-orb orb-2" id="orb2"></div>
   <div class="bg-orb orb-3" id="orb3"></div>
   <div class="bg-orb orb-4" id="orb4"></div>
- 
+
   <div class="container">
- 
+
     <!-- Logo -->
     <header class="header">
       <div class="logo">
@@ -33,30 +33,44 @@
         <span class="logo-text">VidDrop</span>
       </div>
     </header>
- 
+
     <!-- Main content -->
     <main class="main">
- 
-      <!-- Mode selector -->
-      <div class="mode-selector">
-        <button class="mode-btn active" onclick="switchMode('download')" id="mode-download">
-          <span class="mode-icon">⬇</span>
-          <span>Baixar Vídeo</span>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist" aria-label="Selecione a funcionalidade">
+        <button
+          class="tab-btn active"
+          id="tab-download"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-download"
+          onclick="switchTab('download')"
+        >
+          <span class="tab-icon">⬇️</span>
+          <span class="tab-label">Baixar Vídeo</span>
         </button>
-        <button class="mode-btn" onclick="switchMode('clean')" id="mode-clean">
-          <span class="mode-icon">🧹</span>
-          <span>Limpar Metadados</span>
+        <button
+          class="tab-btn"
+          id="tab-clean"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-clean"
+          onclick="switchTab('clean')"
+        >
+          <span class="tab-icon">🧹</span>
+          <span class="tab-label">Limpar Metadados</span>
         </button>
       </div>
- 
-      <!-- Download Mode -->
-      <div class="mode-content" id="download-mode">
+
+      <!-- Download Tab -->
+      <div id="panel-download" role="tabpanel" class="tab-panel active">
         <!-- Hero text -->
         <div class="hero">
           <h1 class="hero-title">Baixar do TikTok</h1>
           <p class="hero-subtitle">Cole o link e baixe em alta qualidade, sem marca d'água</p>
         </div>
- 
+
         <!-- Input card -->
         <div class="input-card" id="input-card">
           <div class="input-wrapper">
@@ -78,7 +92,7 @@
             <span class="btn-shimmer"></span>
           </button>
         </div>
- 
+
         <!-- Loading state -->
         <div class="loading-state" id="loading-state" style="display:none">
           <div class="spinner-ring" id="spinner-ring">
@@ -86,7 +100,7 @@
           </div>
           <p class="loading-text">Buscando o vídeo...</p>
         </div>
- 
+
         <!-- Result panel -->
         <div class="result-panel" id="result-panel" style="display:none">
           <div class="result-header">
@@ -105,16 +119,16 @@
           <div class="result-options" id="result-options">
             <!-- dynamically filled -->
           </div>
-          <button class="try-another-btn" onclick="resetState()">⟵ Tentar outro link</button>
+          <button class="try-another-btn" onclick="resetDownload()">⟵ Tentar outro link</button>
         </div>
- 
+
         <!-- Error state -->
         <div class="error-state" id="error-state" style="display:none">
           <span class="error-icon">⚠</span>
           <p class="error-msg" id="error-msg">Link inválido. Verifique a URL e tente novamente.</p>
-          <button class="try-another-btn" onclick="resetState()">Tentar novamente</button>
+          <button class="try-another-btn" onclick="resetDownload()">Tentar novamente</button>
         </div>
- 
+
         <!-- Features strip -->
         <div class="features" id="features-strip">
           <div class="feature-item">
@@ -133,30 +147,50 @@
           </div>
         </div>
       </div>
- 
-      <!-- Clean Metadata Mode -->
-      <div class="mode-content" id="clean-mode" style="display:none">
+
+      <!-- Clean Metadata Tab -->
+      <div id="panel-clean" role="tabpanel" class="tab-panel" style="display:none">
         <!-- Hero text -->
         <div class="hero">
           <h1 class="hero-title">Limpar Metadados</h1>
-          <p class="hero-subtitle">Remove todas as informações do arquivo (EXIF, timestamps, autor)</p>
+          <p class="hero-subtitle">Remove EXIF, timestamps, autor e outras informações</p>
         </div>
- 
-        <!-- Upload card -->
-        <div class="upload-card" id="upload-card">
-          <div class="upload-area" id="upload-area" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+
+        <!-- Upload area -->
+        <div class="upload-card">
+          <div 
+            class="upload-area" 
+            id="upload-area" 
+            ondrop="handleDrop(event)" 
+            ondragover="handleDragOver(event)" 
+            ondragleave="handleDragLeave(event)"
+            onclick="document.getElementById('file-input').click()"
+          >
             <span class="upload-icon">📁</span>
-            <p class="upload-text">Arraste o vídeo aqui ou <span class="upload-link">clique para selecionar</span></p>
-            <input type="file" id="file-input" accept="video/*,image/*" style="display:none" onchange="handleFileSelect(event)" />
+            <p class="upload-title">Arraste ou clique para selecionar</p>
+            <p class="upload-subtitle">Vídeo ou imagem (MP4, MOV, JPG, PNG)</p>
+            <input 
+              type="file" 
+              id="file-input" 
+              accept="video/*,image/*" 
+              style="display:none" 
+              onchange="handleFileSelect(event)" 
+            />
           </div>
-          <button class="download-btn" id="clean-btn" onclick="handleClean()" style="display:none">
+
+          <p class="file-info" id="file-info" style="display:none"></p>
+
+          <button 
+            class="download-btn clean-action-btn" 
+            id="clean-btn" 
+            onclick="handleClean()" 
+            style="display:none"
+          >
             <span class="btn-icon">🧹</span>
             <span class="btn-text">Limpar Metadados</span>
-            <span class="btn-shimmer"></span>
           </button>
-          <p class="file-info" id="file-info"></p>
         </div>
- 
+
         <!-- Loading state for cleaning -->
         <div class="loading-state" id="clean-loading" style="display:none">
           <div class="spinner-ring">
@@ -164,47 +198,47 @@
           </div>
           <p class="loading-text">Limpando metadados...</p>
         </div>
- 
+
         <!-- Clean result -->
-        <div class="result-panel" id="clean-result" style="display:none">
-          <div class="result-header" style="text-align:center">
-            <span class="result-icon" style="font-size:32px">✅</span>
-            <p style="color: #10b981; margin-top: 10px;">Arquivo limpo com sucesso!</p>
+        <div class="result-panel clean-result-panel" id="clean-result" style="display:none">
+          <div style="text-align: center; padding: 20px;">
+            <span style="font-size: 48px;">✅</span>
+            <p style="color: #10b981; margin-top: 15px; font-weight: 600; font-size: 1.1rem;">Arquivo limpo com sucesso!</p>
           </div>
-          <div style="padding: 20px;">
-            <p style="margin-bottom: 15px; color: #888;">Metadados removidos:</p>
-            <ul style="color: #ddd; padding-left: 20px;">
-              <li>EXIF Data</li>
-              <li>Timestamps</li>
-              <li>Autor/Copyright</li>
-              <li>GPS Location</li>
-              <li>Todas as tags</li>
-            </ul>
+
+          <div style="padding: 20px; background: rgba(255,255,255,0.02); border-radius: 10px; margin: 15px 0;">
+            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.9rem;">Removido:</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="color: #ddd; font-size: 0.85rem;">✓ EXIF Data</div>
+              <div style="color: #ddd; font-size: 0.85rem;">✓ Timestamps</div>
+              <div style="color: #ddd; font-size: 0.85rem;">✓ GPS Location</div>
+              <div style="color: #ddd; font-size: 0.85rem;">✓ Autor/Copyright</div>
+            </div>
           </div>
-          <button class="download-btn" id="download-clean-btn" onclick="downloadCleanedFile()" style="margin-top: 15px;">
+
+          <button class="download-btn clean-action-btn" id="download-clean-btn" onclick="downloadCleanedFile()">
             <span class="btn-icon">⬇</span>
-            <span>Baixar Arquivo Limpo</span>
+            <span class="btn-text">Baixar Arquivo Limpo</span>
           </button>
-          <button class="try-another-btn" onclick="resetCleanMode()">🧹 Limpar outro arquivo</button>
+          <button class="try-another-btn" onclick="resetClean()">🧹 Limpar outro arquivo</button>
         </div>
- 
+
         <!-- Clean error -->
         <div class="error-state" id="clean-error" style="display:none">
           <span class="error-icon">⚠</span>
           <p class="error-msg" id="clean-error-msg">Erro ao limpar metadados.</p>
-          <button class="try-another-btn" onclick="resetCleanMode()">Tentar novamente</button>
+          <button class="try-another-btn" onclick="resetClean()">Tentar novamente</button>
         </div>
       </div>
- 
+
     </main>
- 
+
     <footer class="footer">
       <p>VidDrop &copy; 2026 — Apenas para uso pessoal</p>
     </footer>
- 
+
   </div>
- 
+
   <script src="script.js"></script>
 </body>
 </html>
- 
