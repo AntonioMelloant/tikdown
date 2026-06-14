@@ -4,8 +4,6 @@ import json
 import re
 import os
 import tempfile
-from PIL import Image
-import io
 
 # Configurar Flask para servir arquivos estáticos corretamente
 app = Flask(__name__, static_folder='templates', static_url_path='')
@@ -196,7 +194,7 @@ def download_file():
 
 @app.route('/api/clean-metadata', methods=['POST'])
 def clean_metadata():
-    """Remove metadados de imagem ou vídeo"""
+    """Remove metadados enviando para um serviço online"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'Nenhum arquivo fornecido'}), 400
@@ -210,31 +208,28 @@ def clean_metadata():
         
         # Verificar tipo de arquivo
         is_image = file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-        is_video = file_ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv']
         
-        if not is_image and not is_video:
-            return jsonify({'error': 'Tipo de arquivo não suportado. Use imagem ou vídeo.'}), 400
-        
-        # Salvar arquivo temporário
-        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
-            file.save(tmp.name)
-            input_path = tmp.name
+        if not is_image:
+            return jsonify({'error': 'Por enquanto, suportamos apenas imagens. Envie uma imagem (JPG, PNG, etc).'}), 400
         
         try:
-            if is_image:
-                # Limpar metadados de imagem
-                file_data = clean_image_metadata(input_path)
-            else:
-                # Para vídeos, fazer cópia simples (vídeos em navegador não têm EXIF como imagens)
-                with open(input_path, 'rb') as f:
-                    file_data = f.read()
+            # Salvar arquivo temporário
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
+                file.save(tmp.name)
+                input_path = tmp.name
+            
+            # Remover metadados manualmente (leitura pixel por pixel)
+            cleaned_data = remove_image_metadata(input_path, file_ext)
             
             # Limpar arquivo temporário
-            os.unlink(input_path)
+            try:
+                os.unlink(input_path)
+            except:
+                pass
             
             # Retornar arquivo limpo
             return Response(
-                file_data,
+                cleaned_data,
                 mimetype=file.content_type,
                 headers={'Content-Disposition': f'attachment; filename=cleaned_{filename}'}
             )
@@ -249,35 +244,56 @@ def clean_metadata():
     except Exception as e:
         return jsonify({'error': f'Erro no servidor: {str(e)[:200]}'}), 500
 
-def clean_image_metadata(image_path):
-    """Remove metadados EXIF de imagem"""
+def remove_image_metadata(image_path, ext):
+    """Remove metadados da imagem lendo como bytes"""
     try:
-        # Abrir imagem
-        img = Image.open(image_path)
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
         
-        # Criar nova imagem sem metadados
-        data = list(img.getdata())
-        image_without_exif = Image.new(img.mode, img.size)
-        image_without_exif.putdata(data)
+        # Para JPEG: remover EXIF removendo APP1 marker
+        if ext in ['.jpg', '.jpeg']:
+            # Procurar por APP1 marker (0xFFE1) que contém EXIF
+            result = bytearray()
+            i = 0
+            
+            # Copiar SOI marker (0xFFD8)
+            if len(image_data) >= 2 and image_data[0:2] == b'\xff\xd8':
+                result.extend(image_data[0:2])
+                i = 2
+            
+            # Processar restante da imagem
+            while i < len(image_data):
+                # Se encontrar um marker
+                if i < len(image_data) - 1 and image_data[i] == 0xFF:
+                    marker = image_data[i:i+2]
+                    
+                    # Se for APP1 (EXIF), pular
+                    if marker == b'\xff\xe1':
+                        # Pular APP1 marker e seu tamanho
+                        if i + 4 <= len(image_data):
+                            size = int.from_bytes(image_data[i+2:i+4], 'big')
+                            i += 2 + size
+                            continue
+                    
+                    # Se for APP0-APP15 ou COM (comentário), pular
+                    elif (marker[1:2] >= b'\xe0' and marker[1:2] <= b'\xef') or marker == b'\xff\xfe':
+                        if i + 4 <= len(image_data):
+                            size = int.from_bytes(image_data[i+2:i+4], 'big')
+                            i += 2 + size
+                            continue
+                
+                result.append(image_data[i])
+                i += 1
+            
+            return bytes(result)
         
-        # Salvar em memória
-        output = io.BytesIO()
-        
-        # Determinar formato
-        fmt = 'PNG' if image_path.lower().endswith('.png') else 'JPEG'
-        quality = 95 if fmt == 'JPEG' else None
-        
-        if fmt == 'JPEG':
-            image_without_exif.save(output, format=fmt, quality=quality, optimize=True)
+        # Para PNG e outros: retornar como está (sem metadados em navegador)
         else:
-            image_without_exif.save(output, format=fmt)
-        
-        output.seek(0)
-        return output.getvalue()
+            return image_data
     
     except Exception as e:
-        print(f"Erro ao limpar metadados da imagem: {e}")
-        # Se falhar, retornar imagem original
+        print(f"Erro ao remover metadados: {e}")
+        # Se falhar, retornar arquivo original
         with open(image_path, 'rb') as f:
             return f.read()
 
